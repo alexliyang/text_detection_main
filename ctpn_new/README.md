@@ -25,7 +25,7 @@ ctpn_new--|___ctpn
 ---| Imageset 保存图片文件
    ----|xxxxxx.jpg xxxxxx为图片名(不带扩展名)
    | Imageinfo 保存每张图片对应的txt文本
-   ----|xxxxxx.txt xxxxxx为图片名(不带扩展名)                            ,每一行为一个文本框，格式为xmin,ymin,xmax,ymax,width,height,channel
+   ----|xxxxxx.txt xxxxxx为图片名(不带扩展名) ,每一行为一个文本框，格式为xmin,ymin,xmax,ymax,width,height,channel
    ----|..........
    | train_set.txt 保存所有训练样本对应的文件名，每个占一行
 ```
