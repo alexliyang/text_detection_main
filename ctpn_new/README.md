@@ -19,3 +19,20 @@ ctpn_new--|___ctpn
           |___config.yml 全局配置 唯一配置
 ```
 **所有程序的运行都在ctpn_new目录下运行，书写时请注意包和模块的路径问题**
+#### 数据处理格式说明
+要将数据整理成的格式如下，存放在dataset/for_train下
+```
+---| Imageset 保存图片文件
+   ----|xxxxxx.jpg xxxxxx为图片名(不带扩展名)
+   | Imageinfo 保存每张图片对应的txt文本
+   ----|xxxxxx.txt xxxxxx为图片名(不带扩展名)                            ,每一行为一个文本框，格式为xmin,ymin,xmax,ymax,width,height,channel
+   ----|..........
+   | train_set.txt 保存所有训练样本对应的文件名，每个占一行
+```
+
+**将原始数据放在dataset/ICPR_text_train下，文件夹分别为image和text, 两个文件夹的数据必须对应一致。在ctpn_new目录下运行预处理脚本, 处理后的数据将存在dataset/for_train下**
+## 重要提示 请大家在书写代码之前确认.gitignore中已经加入了如下的语句：
+```
+ctpn_tensorflow/*
+ctpn_new/dataset/*
+```
