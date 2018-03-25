@@ -9,7 +9,7 @@
 ### 2018.3.25 更新
 新的项目结构
 ```
-ctpn_new--|___ctpn 
+ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操作
           |___data_process 读取训练数据并处理成需要的形式，返回roidb对象
           |___input_layer 网络结果第一层，给核心网络提供每轮batch所需的数据
           |___network 核心网络 基类base_network和子类ctpn_network
