@@ -7,6 +7,5 @@
    ----|xxxxxx.txt xxxxxx为图片名(不带扩展名)，每一行为一个文本框，格式为xmin,ymin,xmax,ymax,width,height,channel
    ----|..........
    | train_set.txt 保存所有训练样本对应的文件名，每个占一行
-
-### 在ctpn_new下直接运行，结果直接输出到到dataset下 ###
+### 要求在ctpn_new 目录下能够直接运行，直接读取 dataset/ICPR_text_train 下的原始训练数据进行处理，结果直接输出到到dataset下，不可人工复制粘贴，ctpn_new/dataset 目录下的所有文件将被git忽略，以提高push速度和减少不必要的文件冲突###
 """
