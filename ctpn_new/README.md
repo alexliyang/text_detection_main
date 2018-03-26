@@ -29,8 +29,8 @@ ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操�
    ----|..........
    | train_set.txt 保存所有训练样本对应的文件名 每行为一张图片的信息
 ```
-说明：Imageinfo下的每个txt格式变更，原来~~xmin,ymin,xmax,ymax,width,height,channel~~弃用，新的格式为**xmin,ymin,xmax,ymax**,
-train_set.txt格式变为 **xxxx.jpg,width,height,channel**
+> 说明：Imageinfo下的每个txt格式变更，原来~~xmin,ymin,xmax,ymax,width,height,channel~~弃用，新的格式为**xmin,ymin,xmax,ymax**,
+> train_set.txt格式变为 **xxxx.jpg,width,height,channel**
 
 **将原始数据放在dataset/ICPR_text_train下，文件夹分别为image和text, 两个文件夹的数据必须对应一致。在ctpn_new目录下运行预处理脚本, 处理后的数据将存在dataset/for_train下**
 ## 重要提示 请大家在书写代码之前确认.gitignore中已经加入了如下的语句,并做一次提交, 然后在开始写代码：
