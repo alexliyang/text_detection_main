@@ -339,12 +339,4 @@ def _compute_targets(ex_rois, gt_rois):
     """
     # bbox_transform函数的输入是anchors， 和GT的坐标部分
     # 输出是一个N×4的矩阵，每行表示一个anchor与对应的IOU最大的GT的x,y,w,h回归
-
-    print(ex_rois)
-    mywidth = ex_rois[:, 2]-ex_rois[:, 0] + 1
-    print(mywidth)
-    for i in mywidth:
-        if i != 16:
-            print("=============++++++++++++++===========", mywidth)
-    print("888888888888888888888888888888888888888888888888888")
     return bbox_transform(ex_rois, gt_rois[:, :4]).astype(np.float32, copy=False)

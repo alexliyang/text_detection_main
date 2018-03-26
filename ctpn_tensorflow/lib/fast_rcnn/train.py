@@ -32,6 +32,7 @@ class SolverWrapper(object):
 
     def snapshot(self, sess, iter):
         net = self.net
+        # 这个if语句会执行
         if cfg.TRAIN.BBOX_REG and 'bbox_pred' in net.layers and cfg.TRAIN.BBOX_NORMALIZE_TARGETS:
             # save original values
             with tf.variable_scope('bbox_pred', reuse=True):
@@ -43,7 +44,7 @@ class SolverWrapper(object):
 
             # scale and shift with bbox reg unnormalization; then save snapshot
             weights_shape = weights.get_shape().as_list()
-            sess.run(weights.assign(orig_0 * np.tile(self.bbox_stds, (weights_shape[0],1))))
+            sess.run(weights.assign(orig_0 * np.tile(self.bbox_stds, (weights_shape[0], 1))))
             sess.run(biases.assign(orig_1 * self.bbox_stds + self.bbox_means))
 
         if not os.path.exists(self.output_dir):
@@ -82,8 +83,8 @@ class SolverWrapper(object):
         # data_layer对象是一批一批地传递处理好了的数据
         data_layer = get_data_layer(self.roidb, self.imdb.num_classes)
 
-        total_loss,model_loss, rpn_cross_entropy, rpn_loss_box = self.net.build_loss(ohem=cfg.TRAIN.OHEM)
-        # scalar summary
+        total_loss, model_loss, rpn_cross_entropy, rpn_loss_box = self.net.build_loss(ohem=cfg.TRAIN.OHEM)
+        # 以下summary是为了可视化，可暂且不理会
         tf.summary.scalar('rpn_reg_loss', rpn_loss_box)
         tf.summary.scalar('rpn_cls_loss', rpn_cross_entropy)
         tf.summary.scalar('model_loss', model_loss)
@@ -93,41 +94,44 @@ class SolverWrapper(object):
         log_image, log_image_data, log_image_name =\
             self.build_image_summary()
 
-        # optimizer
+        # cfg.TRAIN.LEARNING_RATE,=0.00001
         lr = tf.Variable(cfg.TRAIN.LEARNING_RATE, trainable=False)
+        # TRAIN.SOLVER = 'Momentum'
         if cfg.TRAIN.SOLVER == 'Adam':
             opt = tf.train.AdamOptimizer(cfg.TRAIN.LEARNING_RATE)
         elif cfg.TRAIN.SOLVER == 'RMS':
             opt = tf.train.RMSPropOptimizer(cfg.TRAIN.LEARNING_RATE)
         else:
             # lr = tf.Variable(0.0, trainable=False)
-            momentum = cfg.TRAIN.MOMENTUM
+            momentum = cfg.TRAIN.MOMENTUM   # 0.9
             opt = tf.train.MomentumOptimizer(lr, momentum)
 
         global_step = tf.Variable(0, trainable=False)
         with_clip = True
         if with_clip:
-            tvars = tf.trainable_variables()
+            tvars = tf.trainable_variables()  # 获取所有的可训练参数
             grads, norm = tf.clip_by_global_norm(tf.gradients(total_loss, tvars), 10.0)
             train_op = opt.apply_gradients(list(zip(grads, tvars)), global_step=global_step)
         else:
             train_op = opt.minimize(total_loss, global_step=global_step)
 
-        # intialize variables
+        # initialize variables
         sess.run(tf.global_variables_initializer())
         restore_iter = 0
 
         # load vgg16
         if self.pretrained_model is not None and not restore:
             try:
-                print(('Loading pretrained model '
-                   'weights from {:s}').format(self.pretrained_model))
+                print(('Loading pretrained model'
+                       'weights from {:s}').format(self.pretrained_model))
+
+                # 从预训练模型中导入
                 self.net.load(self.pretrained_model, sess, True)
             except:
                 raise 'Check your pretrained model {:s}'.format(self.pretrained_model)
 
         # resuming a trainer
-        if restore:
+        if restore:  # restore为True表示训练过程中可能死机了， 现在重新启动训练
             try:
                 ckpt = tf.train.get_checkpoint_state(self.output_dir)
                 print('Restoring from {}...'.format(ckpt.model_checkpoint_path), end=' ')
@@ -144,14 +148,14 @@ class SolverWrapper(object):
         for iter in range(restore_iter, max_iters):
             timer.tic()
             # learning rate
-            if iter != 0 and iter % cfg.TRAIN.STEPSIZE == 0:
+            if iter != 0 and iter % cfg.TRAIN.STEPSIZE == 0:  # 每30000轮，学习率变为原来的0.1
                 sess.run(tf.assign(lr, lr.eval() * cfg.TRAIN.GAMMA))
                 print(lr)
 
             # get one batch
             blobs = data_layer.forward()
 
-            feed_dict={
+            feed_dict = {
                 self.net.data: blobs['data'],
                 self.net.im_info: blobs['im_info'],
                 self.net.keep_prob: 0.5,
@@ -159,25 +163,25 @@ class SolverWrapper(object):
                 self.net.gt_ishard: blobs['gt_ishard'],
                 self.net.dontcare_areas: blobs['dontcare_areas']
             }
-            res_fetches=[]
-            fetch_list = [total_loss,model_loss, rpn_cross_entropy, rpn_loss_box,
-                          summary_op,
-                          train_op] + res_fetches
+            res_fetches = []
+            fetch_list = [total_loss, model_loss, rpn_cross_entropy,
+                          rpn_loss_box, summary_op, train_op] + res_fetches
 
-            total_loss_val,model_loss_val, rpn_loss_cls_val, rpn_loss_box_val, \
+            total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val, \
                 summary_str, _ = sess.run(fetches=fetch_list, feed_dict=feed_dict)
 
             self.writer.add_summary(summary=summary_str, global_step=global_step.eval())
 
             _diff_time = timer.toc(average=False)
 
-
-            if (iter) % (cfg.TRAIN.DISPLAY) == 0:
-                print('iter: %d / %d, total loss: %.4f, model loss: %.4f, rpn_loss_cls: %.4f, rpn_loss_box: %.4f, lr: %f'%\
-                        (iter, max_iters, total_loss_val,model_loss_val,rpn_loss_cls_val,rpn_loss_box_val,lr.eval()))
+            if iter % cfg.TRAIN.DISPLAY == 0:
+                print('iter: %d / %d, total loss: %.4f, model loss: %.4f, rpn_loss_cls: %.4f, '
+                      'rpn_loss_box: %.4f, lr: %f' % (iter, max_iters, total_loss_val, model_loss_val,
+                                                      rpn_loss_cls_val, rpn_loss_box_val, lr.eval()))
                 print('speed: {:.3f}s / iter'.format(_diff_time))
 
-            if (iter+1) % cfg.TRAIN.SNAPSHOT_ITERS == 0:
+            # 每一千次干什么事，这里要看！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+            if (iter+1) % cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
                 last_snapshot_iter = iter
                 self.snapshot(sess, iter)
 
