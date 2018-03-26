@@ -27,11 +27,13 @@ ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操�
    | Imageinfo 保存每张图片对应的txt文本
    ----|xxxxxx.txt xxxxxx为图片名(不带扩展名) ,每一行为一个文本框，格式为xmin,ymin,xmax,ymax,width,height,channel
    ----|..........
-   | train_set.txt 保存所有训练样本对应的文件名，每个占一行
+   | train_set.txt 保存所有训练样本对应的文件名 每行为一张图片的信息
 ```
-
+说明：Imageinfo下的每个txt格式变更，原来~~xmin,ymin,xmax,ymax,width,height,channel~~弃用，新的格式为**xmin,ymin,xmax,ymax**,
+train_set.txt格式变为 **xxxx.jpg,width,height,channel**
 **将原始数据放在dataset/ICPR_text_train下，文件夹分别为image和text, 两个文件夹的数据必须对应一致。在ctpn_new目录下运行预处理脚本, 处理后的数据将存在dataset/for_train下**
-## 重要提示 请大家在书写代码之前确认.gitignore中已经加入了如下的语句：
+## 重要提示 请大家在书写代码之前确认.gitignore中已经加入了如下的语句,并做一次提交, 然后在开始写代码：
+
 ```
 ctpn_tensorflow/*
 ctpn_new/dataset/*
@@ -40,7 +42,7 @@ ctpn_new/dataset/*
 dataset为数据和缓存文件目录,为提高代码共享的效率，添加gitignore
 之后被忽略，但应保持其结构一致，避免不必要的麻烦，dataset项目目录结构如下
 ```
-dataset---|
+dataset---|___checkpoints tensorflow断点存储目录
           |___ICPR_text_train 原始数据集
                  |___text 
                  |___image  text和image文件夹中的数据必须一一对应
@@ -53,5 +55,7 @@ dataset---|
                  |____VGG16.npy预训练模型参数
           |___output 网络运行中间的输出目录
           |___log 日志输出目录
+          |___cache 存储
 
 ```
+**为增加程序的鲁棒性，所欲的路径在书写代码都要判断路径是否存在，若不存在则创建**
