@@ -1,5 +1,9 @@
 import tensorflow as tf
 
+
+
+
+
 class SolverWrapper(object):
 	def __init__(self):
 		pass
@@ -17,7 +21,6 @@ class SolverWrapper(object):
 
 
 def train_net():
-    """Train a Fast R-CNN network."""
 
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allocator_type = 'BFC'
@@ -28,6 +31,6 @@ def train_net():
         sw = SolverWrapper()
         print('Solving...')
 
-        sw.train_model(sess, max_iters, restore=restore)
+        sw.train_model()
         print('done solving')
 

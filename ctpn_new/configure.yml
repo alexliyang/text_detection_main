@@ -1,0 +1,7 @@
+TRAIN:
+  USE_FLIPPED: True
+  USE_CACHE: True
+  CACHE_PATH: dataset/cache
+  TRAIN_PATH: dataset/for_train
+TEST:
+
