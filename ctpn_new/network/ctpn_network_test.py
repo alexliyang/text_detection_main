@@ -9,3 +9,9 @@ class CtpnNetwork_test(Network):
 
     def setup(self):
         pass
+
+    def _get_image_blob(im):
+        pass
+
+    def test_ctpn(sess, net, im, boxes=None):
+        passu
