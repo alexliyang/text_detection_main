@@ -6,3 +6,52 @@
 
 之后将在这里上传基本的项目结构，大家有任何的建议都可以在群里说，Happy Hacking😄
 
+### 2018.3.25 更新
+新的项目结构
+```
+ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操作
+          |___data_process 读取训练数据并处理成需要的形式，返回roidb对象
+          |___input_layer 网络结果第一层，给核心网络提供每轮batch所需的数据
+          |___network 核心网络 基类base_network和子类ctpn_network
+          |___lib 运行时所需要的某些cython扩展
+          |___prepare 数据预处理脚本，结果直接输出到dataset
+          |___run 训练数据和测试数据程序的入口
+          |___config.yml 全局配置 唯一配置
+```
+**所有程序的运行都在ctpn_new目录下运行，书写时请注意包和模块的路径问题**
+#### 数据处理格式说明
+要将数据整理成的格式如下，存放在dataset/for_train下
+```
+---| Imageset 保存图片文件
+   ----|xxxxxx.jpg xxxxxx为图片名(不带扩展名)
+   | Imageinfo 保存每张图片对应的txt文本
+   ----|xxxxxx.txt xxxxxx为图片名(不带扩展名) ,每一行为一个文本框，格式为xmin,ymin,xmax,ymax,width,height,channel
+   ----|..........
+   | train_set.txt 保存所有训练样本对应的文件名，每个占一行
+```
+
+**将原始数据放在dataset/ICPR_text_train下，文件夹分别为image和text, 两个文件夹的数据必须对应一致。在ctpn_new目录下运行预处理脚本, 处理后的数据将存在dataset/for_train下**
+## 重要提示 请大家在书写代码之前确认.gitignore中已经加入了如下的语句：
+```
+ctpn_tensorflow/*
+ctpn_new/dataset/*
+```
+### 2018.3.26 更新
+dataset为数据和缓存文件目录,为提高代码共享的效率，添加gitignore
+之后被忽略，但应保持其结构一致，避免不必要的麻烦，dataset项目目录结构如下
+```
+dataset---|
+          |___ICPR_text_train 原始数据集
+                 |___text 
+                 |___image  text和image文件夹中的数据必须一一对应
+          |___for_train 训练数据集
+                 |___Imageset
+                 |___Imageinfo
+                 |___train_set.txt
+          |___for_test 测试数据集 暂时没有设计
+          |___pretrain
+                 |____VGG16.npy预训练模型参数
+          |___output 网络运行中间的输出目录
+          |___log 日志输出目录
+
+```
