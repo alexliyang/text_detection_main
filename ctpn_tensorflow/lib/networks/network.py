@@ -51,8 +51,13 @@ class Network(object):
         raise NotImplementedError('Must be subclassed.')
 
     def load(self, data_path, session, ignore_missing=False):
+
+        # data_dict是一个字典， 键为“conv5_1”, "conv3_2"等等
+        # 而该字典的值又是字典，键为”biases"和"weights"
         data_dict = np.load(data_path, encoding='latin1').item()
-        for key in data_dict:
+        for key in data_dict.keys():
+
+            # key 是“conv5_1”, "conv3_2"等等
             with tf.variable_scope(key, reuse=True):
                 for subkey in data_dict[key]:
                     try:
@@ -62,7 +67,6 @@ class Network(object):
                     except ValueError:
                         print("ignore "+key)
                         if not ignore_missing:
-
                             raise
 
     def feed(self, *args):
@@ -319,11 +323,7 @@ class Network(object):
     def spatial_reshape_layer(self, input, d, name):
         input_shape = tf.shape(input)
         # transpose: (1, H, W, A x d) -> (1, H, WxA, d)
-        return tf.reshape(input,\
-                               [input_shape[0],\
-                                input_shape[1], \
-                                -1,\
-                                int(d)])
+        return tf.reshape(input, [input_shape[0], input_shape[1], -1, int(d)])
 
 
     @layer
@@ -417,39 +417,56 @@ class Network(object):
         with tf.name_scope(name=name) as scope:
             deltas_abs = tf.abs(deltas)
             smoothL1_sign = tf.cast(tf.less(deltas_abs, 1.0/sigma2), tf.float32)
-            return tf.square(deltas) * 0.5 * sigma2 * smoothL1_sign + \
-                        (deltas_abs - 0.5 / sigma2) * tf.abs(smoothL1_sign - 1)
+            return tf.square(deltas) * 0.5 * sigma2 * smoothL1_sign +\
+                   (deltas_abs - 0.5 / sigma2) * tf.abs(smoothL1_sign - 1)
 
     def build_loss(self, ohem=False):
-        # classification loss
-        rpn_cls_score = tf.reshape(self.get_output('rpn_cls_score_reshape'), [-1, 2])  # shape (HxWxA, 2)
-        rpn_label = tf.reshape(self.get_output('rpn-data')[0], [-1])  # shape (HxWxA)
-        # ignore_label(-1)
-        fg_keep = tf.equal(rpn_label, 1)
-        rpn_keep = tf.where(tf.not_equal(rpn_label, -1))
-        rpn_cls_score = tf.gather(rpn_cls_score, rpn_keep) # shape (N, 2)
-        rpn_label = tf.gather(rpn_label, rpn_keep)
-        rpn_cross_entropy_n = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=rpn_label,logits=rpn_cls_score)
+        # 这一步输出的只是分数，没有softmax， 形状为(HxWxA, 2)
+        rpn_cls_score = tf.reshape(self.get_output('rpn_cls_score_reshape'), [-1, 2])
 
-        # box loss
-        rpn_bbox_pred = self.get_output('rpn_bbox_pred') # shape (1, H, W, Ax4)
+        # self.get_output('rpn-data')[0]是形如(1, FM的高，FM的宽，10)的labels
+        rpn_label = tf.reshape(self.get_output('rpn-data')[0], [-1])  # shape (HxWxA)
+
+        # 取出标签为1 的label
+        fg_keep = tf.equal(rpn_label, 1)
+
+        # 保留的标签
+        rpn_keep = tf.where(tf.not_equal(rpn_label, -1))
+
+        # 取出保留的标签所在行的分数
+        rpn_cls_score = tf.gather(rpn_cls_score, rpn_keep)  # shape (N, 2)
+
+        # 取出保留的标签所在的标签
+        rpn_label = tf.gather(rpn_label, rpn_keep)
+
+        # 交叉熵损失
+        rpn_cross_entropy_n = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=rpn_label, logits=rpn_cls_score)
+
+        rpn_bbox_pred = self.get_output('rpn_bbox_pred')  # shape [1, H, W, 40]
+
+        # rpn_bbox_targets 是(1, FM的高，FM的宽，40) 最后一个维度中，每四个表示一个anchor的回归 x,y,w,h
         rpn_bbox_targets = self.get_output('rpn-data')[1]
         rpn_bbox_inside_weights = self.get_output('rpn-data')[2]
         rpn_bbox_outside_weights = self.get_output('rpn-data')[3]
-        rpn_bbox_pred = tf.gather(tf.reshape(rpn_bbox_pred, [-1, 4]), rpn_keep) # shape (N, 4)
+
+        rpn_bbox_pred = tf.gather(tf.reshape(rpn_bbox_pred, [-1, 4]), rpn_keep)  # shape (N, 4)
+
         rpn_bbox_targets = tf.gather(tf.reshape(rpn_bbox_targets, [-1, 4]), rpn_keep)
         rpn_bbox_inside_weights = tf.gather(tf.reshape(rpn_bbox_inside_weights, [-1, 4]), rpn_keep)
         rpn_bbox_outside_weights = tf.gather(tf.reshape(rpn_bbox_outside_weights, [-1, 4]), rpn_keep)
 
+        # 有内权重，是因为只需计算y值和高度的回归;有外权重，是因为只需计算正例的box回归
         rpn_loss_box_n = tf.reduce_sum(rpn_bbox_outside_weights * self.smooth_l1_dist(
             rpn_bbox_inside_weights * (rpn_bbox_pred - rpn_bbox_targets)), reduction_indices=[1])
 
         rpn_loss_box = tf.reduce_sum(rpn_loss_box_n) / (tf.reduce_sum(tf.cast(fg_keep, tf.float32)) + 1)
         rpn_cross_entropy = tf.reduce_mean(rpn_cross_entropy_n)
 
-        model_loss = rpn_cross_entropy +  rpn_loss_box
+        model_loss = rpn_cross_entropy + rpn_loss_box
 
+        # 把正则化项取出来，以列表形式返回
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         total_loss = tf.add_n(regularization_losses) + model_loss
 
-        return total_loss,model_loss, rpn_cross_entropy, rpn_loss_box
+        # 返回总损失（分类的交叉熵+盒子回归+正则化项）， 模型损失（分类的交叉熵+盒子回归）， 分类交叉熵， 盒子回归损失
+        return total_loss, model_loss, rpn_cross_entropy, rpn_loss_box
