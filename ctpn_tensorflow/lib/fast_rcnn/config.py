@@ -207,7 +207,7 @@ __C.RNG_SEED = 3
 __C.EPS = 1e-14
 
 # Root directory of project
-__C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
+__C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))  # 该文件所在的目录往上走两级
 
 # Data directory
 __C.DATA_DIR = osp.abspath(osp.join(__C.ROOT_DIR, 'data'))
@@ -247,8 +247,8 @@ def get_log_dir(imdb):
     A canonical path is built using the name from an imdb and a network
     (if not None).
     """
-    log_dir = osp.abspath(\
-        osp.join(__C.ROOT_DIR, 'logs', __C.LOG_DIR, imdb.name, strftime("%Y-%m-%d-%H-%M-%S", localtime())))
+    log_dir = osp.abspath(osp.join(__C.ROOT_DIR, 'logs', __C.LOG_DIR,
+                                   imdb.name, strftime("%Y-%m-%d-%H-%M-%S", localtime())))
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     return log_dir

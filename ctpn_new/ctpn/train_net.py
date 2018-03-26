@@ -18,6 +18,8 @@ class SolverWrapper(object):
 		pass
 
 
+
+
 def train_net():
 
     config = tf.ConfigProto(allow_soft_placement=True)
