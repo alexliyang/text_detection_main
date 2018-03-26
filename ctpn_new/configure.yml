@@ -3,5 +3,6 @@ TRAIN:
   USE_CACHE: True
   CACHE_PATH: dataset/cache
   TRAIN_PATH: dataset/for_train
+  COORDINAE_NUM: 4
 TEST:
 

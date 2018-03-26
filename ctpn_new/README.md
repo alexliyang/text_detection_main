@@ -12,7 +12,7 @@
 ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操作
           |___data_process 读取训练数据并处理成需要的形式，返回roidb对象
           |___input_layer 网络结果第一层，给核心网络提供每轮batch所需的数据
-          |___network 核心网络 基类base_network和子类ctpn_network
+          |___network 核心网络 基类base_network和两个子类train_network和test_network
           |___lib 运行时所需要的某些cython扩展
           |___prepare 数据预处理脚本，结果直接输出到dataset
           |___run 训练数据和测试数据程序的入口
