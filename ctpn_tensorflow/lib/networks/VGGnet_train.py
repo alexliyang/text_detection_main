@@ -57,7 +57,7 @@ class VGGnet_train(Network):
         # Bilstm的输出为[N, H, W, 512]形状
 
         # 往两个方向走，一个用于给类别打分，一个用于盒子回归
-        # 用于盒子回归的，输入是10个anchor，每个anchor有4个坐标，所以输出是10×4
+        # 用于盒子回归的，输入是10个anchor，每个anchor有4个坐标，所以输出是[1, H, W, 40]
         (self.feed('lstm_o').lstm_fc(512, len(anchor_scales) * 10 * 4, name='rpn_bbox_pred'))
 
         # 用于盒子分类的，输出是[1, H, W, 20]
@@ -75,7 +75,7 @@ class VGGnet_train(Network):
         rpn_bbox_outside_weights(1, FM的高，FM的宽，40)， 最后一个维度中，每四个表示一个anchor的外部权重，
         标签为0的是0,0,0,0; 标签为1的是1,1,1,1, 其余的全0
 
-        且不知内部权重和外部权重是干啥的
+        内部权重和外部权重，在后面计算box回归的损失函数的时候会用到
         """
         (self.feed('rpn_cls_score', 'gt_boxes', 'gt_ishard', 'dontcare_areas', 'im_info')
              .anchor_target_layer(_feat_stride, anchor_scales, name='rpn-data'))
@@ -83,5 +83,5 @@ class VGGnet_train(Network):
         # shape is (1, H, W, Ax2) -> (1, H, WxA, 2)
         # 给之前得到的score进行softmax，得到0-1之间的得分
         (self.feed('rpn_cls_score')
-             .spatial_reshape_layer(2, name = 'rpn_cls_score_reshape')
-             .spatial_softmax(name='rpn_cls_prob'))
+             .spatial_reshape_layer(2, name='rpn_cls_score_reshape')  # 把最后一个维度变成2,即(1,H,W,Ax2)->(1,H,WxA,2)
+             .spatial_softmax(name='rpn_cls_prob'))  # 执行softmax，再转换为(1, H, WxA,2)
