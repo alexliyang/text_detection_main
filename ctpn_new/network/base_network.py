@@ -25,14 +25,14 @@ def layer(op):
 
 
 class base_network(object):
-	def __init__(self):
-		pass
+    def __init__(self):
+        pass
 
     def setup(self):
         raise NotImplementedError('Must be subclassed.')
 
     """载入与训练模型"""
 
- 	def load(self):
- 		pass
+    def load(self):
+        pass
 
