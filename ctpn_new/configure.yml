@@ -4,5 +4,6 @@ TRAIN:
   CACHE_PATH: dataset/cache
   TRAIN_PATH: dataset/for_train
   COORDINAE_NUM: 4
+  WEIGHT_DECAY: 0.0005
 TEST:
 
