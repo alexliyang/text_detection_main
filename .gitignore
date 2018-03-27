@@ -1,3 +1,6 @@
 .idea/*
 ctpn_tensorflow/*
 ctpn_new/dataset/*
+ctpn_new/.idea/*
+ctpn_new/**/*.pyc
+ctpn_new/**/*.so
