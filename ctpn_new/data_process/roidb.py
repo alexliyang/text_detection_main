@@ -95,7 +95,7 @@ class roidb(object):
 
     def _process_each_image_gt(self, index, image_name):
 
-        filename = os.path.join(self._image_gt, image_name + '.txt')
+        filename = os.path.join(self._image_gt, os.path.splitext(image_name)[0] + '.txt')
         print(filename)
         with open(filename, 'r') as f:
             gt_boxes = f.readlines()
@@ -115,9 +115,9 @@ class roidb(object):
         for ix, box in enumerate(gt_boxes):
             box = box.split(',')
             x1 = float(box[0])
-            x2 = float(box[1])
-            x3 = float(box[2])
-            x4 = float(box[3])
+            y1 = float(box[1])
+            x2 = float(box[2])
+            y2 = float(box[3])
 
             # diffc = obj.find('difficult')
             # difficult = 0 if diffc == None else int(diffc.text)
