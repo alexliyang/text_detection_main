@@ -74,6 +74,6 @@ dataset---|___checkpoints tensorflow断点存储目录
 不需要**gt_ishard,dont_care_area**这两个键
 源代码里面有一个类RoiDataLayer，他的输入参数之一是imagedatabase类的的imdb属性。该类的核心功能是根据imdb生成可以输入到网络的blobs，其核心函数是源代码中的get_next_minibach()，该函数的功能是返回一个blobs，并把指针下移一位，图片都不需要翻转。
 
-**2018.3.27更新**
+### 2018.3.27更新
 数据预处理、roidb模块、网络模块初步完成，下一步可以开始进行测试。开始着手分析具体每张图片中文本框的形状分布。
 
