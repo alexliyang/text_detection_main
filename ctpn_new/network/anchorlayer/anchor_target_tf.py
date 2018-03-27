@@ -2,9 +2,9 @@
 import numpy as np
 import numpy.random as npr
 from .generate_anchors import generate_anchors
-from .iou import bbox_overlaps, bbox_intersections
-from ..fast_rcnn.config import cfg
-from ..fast_rcnn.bbox_transform import bbox_transform
+from lib.bbox import bbox_overlaps, bbox_intersections
+# from ..fast_rcnn.config import cfg
+# from ..fast_rcnn.bbox_transform import bbox_transform
 
 
 def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride = (16,), anchor_scales = (16,)):
