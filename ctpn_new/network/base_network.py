@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .anchorlayer.anchor_target_tf import anchor_target_layer_py
+from .anchorlayer.anchor_target_tf import anchor_target_layer
 DEFAULT_PADDING = "SAME"
 
 
@@ -174,18 +174,29 @@ class base_network(object):
             rpn_bbox_targets 是(1, FM的高，FM的宽，40), 最后一个维度中，每四个表示一个anchor的回归 x,y,w,h
 
             """
-            rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer_py,
-                                                      [input[0], input[1], input[2],
+            rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer,
+                                                      [self._cfg, input[0], input[1], input[2],
                                                        _feat_stride, anchor_scales],
                                                       [tf.float32, tf.float32])
 
-            rpn_labels = tf.convert_to_tensor(tf.cast(rpn_labels, tf.int32), name='rpn_labels')
+            rpn_labels = tf.convert_to_tensor(rpn_labels, name='rpn_labels')
             rpn_bbox_targets = tf.convert_to_tensor(rpn_bbox_targets, name='rpn_bbox_targets')
 
-
-            # 这里暂时只需要返回标签和anchor回归目标就可以了，不需要添加内部外部权重，后续会增加side refinement
+            # TODO 这里暂时只需要返回标签和anchor回归目标就可以了，后续会增加side refinement
             return rpn_labels, rpn_bbox_targets
 
+    @layer
+    def spatial_reshape_layer(self, input, d, name):
+        input_shape = tf.shape(input)
+        # transpose: (1, H, W, A x d) -> (1, H, WxA, d)
+        return tf.reshape(input, [input_shape[0], input_shape[1], -1, int(d)], name=name)
 
 
-
+    @layer
+    def softmax(self, input, name):
+        input_shape = tf.shape(input)
+        if name == 'rpn_cls_prob':
+            return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
+                              [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)
+        else:
+            return tf.nn.softmax(input, name=name)
