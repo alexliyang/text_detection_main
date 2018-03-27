@@ -64,7 +64,8 @@ def main():
         if ix == 1:
             print('starting extracting train data......')
             extract_path = get_file_path(base, 'ICPR_text_train')
-            shutil.rmtree(extract_path)
+            if os.path.exists(extract_path):
+                shutil.rmtree(extract_path)
             os.makedirs(extract_path)
 
             un_zip(path, extract_path)
