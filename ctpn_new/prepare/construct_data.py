@@ -1,5 +1,5 @@
 """
-这个脚本用来处理原始的数据，将图片按照短边600为标准进行缩放，同时要缩放坐标
+这个脚本用来处理原始的数据，将图片按照短边600为标准进行缩放，如果缩放后长边超过1200，按照长边1200缩放，同时要缩放坐标
 要将数据整理成的格式如下，存放在dataset/for_train下
 以dataset/for_train为根目录
 ---| Imageset 保存图片文件
@@ -30,7 +30,7 @@ if not os.path.exists(imagefortain_dir):
 
 def rawdata2traindata(config):
     # 将所有训练样本对应的文件名保存在dataset/for_train/train_set.txt 中，每个占一行,格式为xxxx.jpg, width, height, channel, scale
-    # 保存图片文件，将图片按照短边600为标准进行缩放，同时要缩放坐标
+    # 保存图片文件，将图片按照短边600为标准进行缩放，如果缩放后长边超过1200，按照长边1200缩放，同时要缩放坐标
     # 保存每张图片对应的txt文本，每一行为一个文本框，格式为xmin,ymin,xmax,ymax
     imagedata_process(config)
 
@@ -53,17 +53,29 @@ def imagedata_process(config):
         #print(imgSize)
         #print(img_height)
         #print(img_width)
-        # 图片按照短边600为标准进行缩放
+        # 图片按照短边600为标准进行缩放,如果缩放后长边超过1200，按照长边1200缩放
         if img_width <= img_height:
-             width = int(600)
-             height = int(float(img_height)*600/float(img_width))
-             txtdata_process(imagename, img_width,config)
-             scale = round(600/float(img_width), 2)
+            width = int(600)
+            height = int(float(img_height) * 600 / float(img_width))
+            if height > 1200:
+                height = int(1200)
+                width = int(float(img_width) * 1200 / float(img_height))
+                txtdata_process(imagename, 1200, img_height, config)
+                scale = round(1200 / float(img_height), 2)
+            else:
+                txtdata_process(imagename, 600, img_width, config)
+                scale = round(600 / float(img_width), 2)
         else:
             height = int(600)
-            width = int(float(img_width)*600/float(img_height))
-            txtdata_process(imagename, img_height,config)
-            scale = round(600/float(img_height), 2)
+            width = int(float(img_width) * 600 / float(img_height))
+            if width > 1200:
+                width = int(1200)
+                height = int(float(img_height) * 1200 / float(img_width))
+                txtdata_process(imagename, 1200, img_width, config)
+                scale = round(1200 / float(img_width), 2)
+            else:
+                txtdata_process(imagename, 600, img_height, config)
+                scale = round(600 / float(img_height), 2)
         trainImage = rawImage.resize((height, width), Image.ANTIALIAS) #图片缩放
         trainSize = trainImage.size  # 图片的高（行数）和宽（列数）
         train_height = trainSize[0]  # 图片的高（行数）
@@ -78,7 +90,7 @@ def imagedata_process(config):
         trainsetfile.write(image_filename + "," + str(train_width) + "," + str(train_height) + "," + str(3) + "," + str(scale)+ "\n")
     trainsetfile.close()
 
-def txtdata_process(file, s,config):
+def txtdata_process(file, numerator, denominator, config):
     if os.path.exists(txtfortrain_dir + '/' + file + ".txt"):
         os.remove(txtfortrain_dir + '/' + file + ".txt")
     # 创建用于训练的txt文件
@@ -95,18 +107,15 @@ def txtdata_process(file, s,config):
             x = max(float(tmp[0]), float(tmp[2])) - min(float(tmp[0]), float(tmp[2]))
             if y/x <= threshold:
                 continue
-        xmin = round(min(float(tmp[0]), float(tmp[2]), float(tmp[4]), float(tmp[6]))*600/float(s), 2)
-        ymin = round(min(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*600/float(s), 2)
-        xmax = round(max(float(tmp[0]), float(tmp[2]), float(tmp[4]), float(tmp[6]))*600/float(s), 2)
-        ymax = round(max(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*600/float(s), 2)
+        xmin = round(min(float(tmp[0]), float(tmp[2]), float(tmp[4]), float(tmp[6]))*float(numerator)/float(denominator), 2)
+        ymin = round(min(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*float(numerator)/float(denominator), 2)
+        xmax = round(max(float(tmp[0]), float(tmp[2]), float(tmp[4]), float(tmp[6]))*float(numerator)/float(denominator), 2)
+        ymax = round(max(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*float(numerator)/float(denominator), 2)
         fortraintxtfile.write(str(xmin) + "," + str(ymin) + "," + str(xmax) + "," + str(ymax) + "\n")
     fortraintxtfile.close()
 
-
 import sys
 sys.path.append(os.getcwd())
-import pprint
 from lib.load_config import load_config
-
 cfg = load_config()
 rawdata2traindata(cfg)
