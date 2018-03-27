@@ -9,7 +9,7 @@ class train_network(bn):
         self.data = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='data')
         # 图像信息，包含宽，高，缩放比例
         self.im_info = tf.placeholder(tf.float32, shape=[None, 3], name='im_info')
-        # GT_boxes信息，前四列为缩放后的四个坐标，最后一列为类别
+        # GT_boxes信息，前四列为缩放后的四个坐标
         self.gt_boxes = tf.placeholder(tf.float32, shape=[None, 4], name='gt_boxes')
         self.keep_prob = tf.placeholder(tf.float32)
         self.setup()
@@ -17,7 +17,7 @@ class train_network(bn):
     def setup(self):
         self.inputs = []
         self.layers = dict({'data': self.data, 'im_info': self.im_info, 'gt_boxes': self.gt_boxes})
-
+        anchor_scales = [16]
         _feat_stride = [16, ]
 
         # padding本来是“VALID”，我把下面的padding全部改为了“SAME”， 以充分检测
@@ -44,7 +44,7 @@ class train_network(bn):
         (self.feed('conv5_3')
              .conv(3, 3, 512, 1, 1, name='rpn_conv/3x3'))
         # 将得到3×3×512的特征向量提取10个anchor并做双向LSTM中
-        (self.feed('rpn_conv/3x3').Bilstm(512, 128, 512, name='lstm_o'))  # 这里的512必须与最后一个卷积层的512匹配
+        (self.feed('rpn_conv/3x3').bilstm(512, 128, 512, name='lstm_o'))  # 这里的512必须与最后一个卷积层的512匹配
         # Bilstm的输出为[N, H, W, 512]形状
 
         # 往两个方向走，一个用于给类别打分，一个用于盒子回归
@@ -57,18 +57,10 @@ class train_network(bn):
         """
         返回值如下
         rpn_labels是(1, FM的高，FM的宽，10),其中约150个值为0,表示正例; 150个值为1表示负例;其他的为-1,不用于训练
-
         rpn_bbox_targets 是(1, FM的高，FM的宽，40), 最后一个维度中，每四个表示一个anchor的回归 x,y,w,h
 
-        rpn_bbox_inside_weights (1, FM的高，FM的宽，40)， 最后一个维度中，每四个表示一个anchor的内部权重，
-        标签为0的是0,0,0,0; 标签为1的是0,1,0,1, 其余的全0
-
-        rpn_bbox_outside_weights(1, FM的高，FM的宽，40)， 最后一个维度中，每四个表示一个anchor的外部权重，
-        标签为0的是0,0,0,0; 标签为1的是1,1,1,1, 其余的全0
-
-        内部权重和外部权重，在后面计算box回归的损失函数的时候会用到
         """
-        (self.feed('rpn_cls_score', 'gt_boxes', 'gt_ishard', 'dontcare_areas', 'im_info')
+        (self.feed('rpn_cls_score', 'gt_boxes', 'im_info')
              .anchor_target_layer(_feat_stride, anchor_scales, name='rpn-data'))
 
         # shape is (1, H, W, Ax2) -> (1, H, WxA, 2)
