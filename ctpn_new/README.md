@@ -12,11 +12,11 @@
 ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操作
           |___data_process 读取训练数据并处理成需要的形式，返回roidb对象
           |___input_layer 网络结果第一层，给核心网络提供每轮batch所需的数据
-          |___network 核心网络 基类base_network和子类ctpn_network
+          |___network 核心网络 基类base_network和两个子类train_network和test_network
           |___lib 运行时所需要的某些cython扩展
           |___prepare 数据预处理脚本，结果直接输出到dataset
           |___run 训练数据和测试数据程序的入口
-          |___config.yml 全局配置 唯一配置
+          |___configure.yml 全局配置 唯一配置
 ```
 **所有程序的运行都在ctpn_new目录下运行，书写时请注意包和模块的路径问题**
 #### 数据处理格式说明
@@ -29,8 +29,11 @@ ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操�
    ----|..........
    | train_set.txt 保存所有训练样本对应的文件名 每行为一张图片的信息
 ```
+说明：Imageinfo下的每个txt格式变更，原来~~xmin,ymin,xmax,ymax,width,height,channel~~弃用，新的格式为**xmin,ymin,xmax,ymax**,
+train_set.txt格式变为 **xxxx.jpg,scale,width,height,channel, scale是缩放比例**
 > 说明：Imageinfo下的每个txt格式变更，原来~~xmin,ymin,xmax,ymax,width,height,channel~~弃用，新的格式为**xmin,ymin,xmax,ymax**,
-> train_set.txt格式变为 **xxxx.jpg,width,height,channel**
+> train_set.txt格式变为 **xxxx.jpg,width,height,channel,scale** scale为缩放比例
+>>>>>>> 5a7160d269d313d7fa13d18bd4633b7bf6c4ec20
 
 **将原始数据放在dataset/ICPR_text_train下，文件夹分别为image和text, 两个文件夹的数据必须对应一致。在ctpn_new目录下运行预处理脚本, 处理后的数据将存在dataset/for_train下**
 ## 重要提示 请大家在书写代码之前确认.gitignore中已经加入了如下的语句,并做一次提交, 然后在开始写代码：
