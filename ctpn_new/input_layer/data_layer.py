@@ -5,7 +5,6 @@ InputLayer是整个网络的输入层，在每iter中，需要获取下一个bat
 class InputLayer(object):
 	def __init__(self):
 		pass
-
     def _shuffle_roidb_inds(self):
         """Randomly permute the training roidb."""
         pass
