@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .anchorlayer.anchor_target_tf import anchor_target_layer_py
+from .anchorlayer.anchor_target_tf import anchor_target_layer
 DEFAULT_PADDING = "SAME"
 
 
@@ -175,16 +175,93 @@ class base_network(object):
             rpn_bbox_targets 是(1, FM的高，FM的宽，40), 最后一个维度中，每四个表示一个anchor的回归 x,y,w,h
 
             """
-            rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer_py,
-                                                      [input[0], input[1], input[2],
+            rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer,
+                                                      [self._cfg, input[0], input[1], input[2],
                                                        _feat_stride, anchor_scales],
                                                       [tf.float32, tf.float32])
 
-            rpn_labels = tf.convert_to_tensor(tf.cast(rpn_labels, tf.int32), name='rpn_labels')
+            rpn_labels = tf.convert_to_tensor(rpn_labels, name='rpn_labels')
             rpn_bbox_targets = tf.convert_to_tensor(rpn_bbox_targets, name='rpn_bbox_targets')
 
-
-            # 这里暂时只需要返回标签和anchor回归目标就可以了，不需要添加内部外部权重，后续会增加side refinement
+            # TODO 这里暂时只需要返回标签和anchor回归目标就可以了，后续会增加side refinement
             return rpn_labels, rpn_bbox_targets
 
+    @layer
+    def spatial_reshape_layer(self, input, d, name):
+        input_shape = tf.shape(input)
+        # transpose: (1, H, W, A x d) -> (1, H, WxA, d)
+        return tf.reshape(input, [input_shape[0], input_shape[1], -1, int(d)], name=name)
 
+
+    @layer
+    def softmax(self, input, name):
+        input_shape = tf.shape(input)
+        if name == 'rpn_cls_prob':
+            return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
+                              [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)
+        else:
+            return tf.nn.softmax(input, name=name)
+
+    def get_output(self, laye):
+        try:
+            laye = self.layers[laye]
+        except KeyError:
+            print(list(self.layers.keys()))
+            raise KeyError('Unknown layer name fed: %s' % laye)
+        return laye
+
+    def build_loss(self):
+        # 这一步输出的只是分数，没有softmax， 形状为(HxWxA, 2)
+        rpn_cls_score = tf.reshape(self.get_output('rpn_cls_score_reshape'), [-1, 2])
+
+        # self.get_output('rpn-data')[0]是形如(1, FM的高，FM的宽，10)的labels
+        rpn_label = tf.reshape(self.get_output('rpn-data')[0], [-1])  # shape (HxWxA)
+
+        # 取出标签为1 的label所在的索引，一行多列矩阵
+        fg_keep = tf.where(tf.equal(rpn_label, 1))
+
+        # 取出标签为1 或者0的label所在的索引，是一个一行多列矩阵
+        rpn_keep = tf.where(tf.not_equal(rpn_label, -1))
+
+
+        # 取出保留的标签所在行的分数
+        rpn_cls_score = tf.gather(rpn_cls_score, rpn_keep)  # shape (N, 2)
+
+        # 取出保留的标签所在的标签
+        rpn_label = tf.gather(rpn_label, rpn_keep)
+
+        # 交叉熵损失
+        rpn_cross_entropy_n = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=rpn_label, logits=rpn_cls_score)
+
+        rpn_bbox_pred = self.get_output('rpn_bbox_pred')  # shape [1, H, W, 20]
+
+        # rpn_bbox_targets 是(1, FM的高，FM的宽，20) 最后一个维度中，每四个表示一个anchor的回归 y,h
+        rpn_bbox_targets = self.get_output('rpn-data')[1]
+
+        # 取出标签为1的盒子回归
+        rpn_bbox_pred = tf.gather(tf.reshape(rpn_bbox_pred, [-1, 4]), fg_keep)  # shape (N, 4)
+
+        rpn_bbox_targets = tf.gather(tf.reshape(rpn_bbox_targets, [-1, 4]), fg_keep)
+
+        # 有内权重，是因为只需计算y值和高度的回归;有外权重，是因为只需计算正例的box回归
+        rpn_loss_box_n = tf.reduce_sum(self.smooth_l1_dist((rpn_bbox_pred - rpn_bbox_targets)), reduction_indices=[1])
+
+        rpn_loss_box = tf.reduce_sum(rpn_loss_box_n) / (tf.shape(fg_keep)[0] + 1)
+        rpn_cross_entropy = tf.reduce_mean(rpn_cross_entropy_n)
+
+        model_loss = rpn_cross_entropy + rpn_loss_box
+
+        # 把正则化项取出来，以列表形式返回
+        regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+        total_loss = tf.add_n(regularization_losses) + model_loss
+
+        # 返回总损失（分类的交叉熵+盒子回归+正则化项）， 模型损失（分类的交叉熵+盒子回归）， 分类交叉熵， 盒子回归损失
+        return total_loss, model_loss, rpn_cross_entropy, rpn_loss_box
+
+    @staticmethod
+    def smooth_l1_dist(deltas, sigma2=9.0, name='smooth_l1_dist'):
+        with tf.name_scope(name=name) as scope:
+            deltas_abs = tf.abs(deltas)
+            smoothL1_sign = tf.cast(tf.less(deltas_abs, 1.0/sigma2), tf.float32)
+            return tf.square(deltas) * 0.5 * sigma2 * smoothL1_sign +\
+                   (deltas_abs - 0.5 / sigma2) * tf.abs(smoothL1_sign - 1)
