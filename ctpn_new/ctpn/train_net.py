@@ -121,6 +121,8 @@ class SolverWrapper(object):
         #         last_snapshot_iter = iter
         #         self.snapshot(sess, iter)
         #
+
+
         # if last_snapshot_iter != iter:
         #     self.snapshot(sess, iter)
 
