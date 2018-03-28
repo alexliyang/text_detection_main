@@ -131,7 +131,7 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride=(16,)):
     # 至此， 上好标签，开始计算rpn-box的真值
     # --------------------------------------------------------------
     # 根据anchor和gtbox计算得真值（anchor和gtbox之间的偏差）
-    # 输入是所有的anchors，以及与之IOU最大的那个GT，返回是一个N×4的矩阵，每行表示一个anchor与对应的IOU最大的GT的y,h回归
+    # 输入是所有的anchors，以及与之IOU最大的那个GT，返回是一个N×2的矩阵，每行表示一个anchor与对应的IOU最大的GT的y,h回归
     """返回值里面，只有正例的回归是有效值"""
     bbox_targets = _compute_targets(anchors, gt_boxes[argmax_overlaps, :])
 
@@ -144,7 +144,7 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride=(16,)):
     rpn_labels = labels
 
     # bbox_targets
-    bbox_targets = bbox_targets.reshape((1, height, width, A * cfg.TRAIN.COORDINATE_NUM))  # reshape
+    bbox_targets = bbox_targets.reshape((1, height, width, A * 2))  # reshape
 
     rpn_bbox_targets = bbox_targets
 
@@ -229,7 +229,7 @@ def _compute_targets(ex_rois, gt_rois):
     """
 
     # bbox_transform函数的输入是anchors， 和GT的坐标部分
-    # 输出是一个N×4的矩阵，每行表示一个anchor与对应的IOU最大的GT的y,h回归,
+    # 输出是一个N×2的矩阵，每行表示一个anchor与对应的IOU最大的GT的y,h回归,
     return bbox_transform(ex_rois, gt_rois).astype(np.float32, copy=False)
 
 
