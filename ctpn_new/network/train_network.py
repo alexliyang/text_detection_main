@@ -48,17 +48,20 @@ class train_network(bn):
         # Bilstm的输出为[N, H, W, 512]形状
 
         # 往两个方向走，一个用于给类别打分，一个用于盒子回归
-        # 用于盒子回归的，输入是10个anchor，每个anchor有4个坐标，所以输出是[1, H, W, 40]
-        (self.feed('lstm_o').lstm_fc(512, 10 * self._cfg.COORDINAE_NUM, name='rpn_bbox_pred'))
+        # 用于盒子回归的，输入是10个anchor，每个anchor有有2个回归，即y和高度,形状是[1, H, W, 20],
+        # ===============“注意，网络输出的不是预测的盒子的四个坐标，而是y和高度的回归！！！！”========
+        (self.feed('lstm_o').lstm_fc(512, 10 * 2, name='rpn_bbox_pred'))
 
         # 用于盒子分类的，输出是[1, H, W, 20]
-        (self.feed('lstm_o').lstm_fc(512, 10 * self._cfg.COORDINAE_NUM, name='rpn_cls_score'))
+        (self.feed('lstm_o').lstm_fc(512, 10 * 2, name='rpn_cls_score'))
 
         """
         返回值如下
         rpn_labels是(1, FM的高，FM的宽，10),其中约150个值为0,表示正例; 150个值为1表示负例;其他的为-1,不用于训练
-        rpn_bbox_targets 是(1, FM的高，FM的宽，40), 最后一个维度中，每四个表示一个anchor的回归 x,y,w,h
-
+        rpn_bbox_targets 是(1, FM的高，FM的宽，20), 最后一个维度中，每2个表示一个anchor的回归 y,h
+        这里是 GT与anchor之间的回归, 
+        y的回归 = （GT的y-anchor的y）/anchor的高
+        高的回归 = log(GT的高 / anchor的高)
         """
         (self.feed('rpn_cls_score', 'gt_boxes', 'im_info')
              .anchor_target_layer(_feat_stride, anchor_scales, name='rpn-data'))

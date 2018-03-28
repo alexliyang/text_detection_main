@@ -171,7 +171,7 @@ class base_network(object):
             """
             rpn_labels是(1, FM的高，FM的宽，10),其中约150个值为0,表示正例; 150个值为1表示负例;其他的为-1,不用于训练
 
-            rpn_bbox_targets 是(1, FM的高，FM的宽，40), 最后一个维度中，每四个表示一个anchor的回归 x,y,w,h
+            rpn_bbox_targets 是(1, FM的高，FM的宽，20), 最后一个维度中，每四个表示一个anchor的回归 y,h
 
             """
             rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer,
@@ -214,6 +214,7 @@ class base_network(object):
         rpn_cls_score = tf.reshape(self.get_output('rpn_cls_score_reshape'), [-1, 2])
 
         # self.get_output('rpn-data')[0]是形如(1, FM的高，FM的宽，10)的labels
+        # 是真是的标签
         rpn_label = tf.reshape(self.get_output('rpn-data')[0], [-1])  # shape (HxWxA)
 
         # 取出标签为1 的label所在的索引，一行多列矩阵
@@ -234,12 +235,17 @@ class base_network(object):
         rpn_bbox_pred = self.get_output('rpn_bbox_pred')  # shape [1, H, W, 20]
 
         # rpn_bbox_targets 是(1, FM的高，FM的宽，20) 最后一个维度中，每四个表示一个anchor的回归 y,h
-        rpn_bbox_targets = self.get_output('rpn-data')[1]
+        rpn_bbox_targets = self.get_output('rpn-data')[1]  # ================(1, FM的高，FM的宽，20)
 
         # 取出标签为1的盒子回归
-        rpn_bbox_pred = tf.gather(tf.reshape(rpn_bbox_pred, [-1, 4]), fg_keep)  # shape (N, 4)
+        rpn_bbox_pred = tf.gather(tf.reshape(rpn_bbox_pred, [-1, 2]), fg_keep)  # shape (N, 2)
 
-        rpn_bbox_targets = tf.gather(tf.reshape(rpn_bbox_targets, [-1, 4]), fg_keep)
+        """这里是 GT与anchor之间的回归, 
+        y的回归 = （GT的y-anchor的y）/anchor的高
+        高的回归 = log(GT的高 / anchor的高)
+        转换成两列的矩阵， 每一行为一个y和高度回归
+        """
+        rpn_bbox_targets = tf.gather(tf.reshape(rpn_bbox_targets, [-1, 2]), fg_keep)
 
         # 有内权重，是因为只需计算y值和高度的回归;有外权重，是因为只需计算正例的box回归
         rpn_loss_box_n = tf.reduce_sum(self.smooth_l1_dist((rpn_bbox_pred - rpn_bbox_targets)), reduction_indices=[1])
