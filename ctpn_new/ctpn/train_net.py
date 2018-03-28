@@ -115,14 +115,14 @@ class SolverWrapper(object):
             # 郭义，到此投笔
 
 
-
-            # TODO 每一千次干什么事，这里要看！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-            if (iter+1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
-                last_snapshot_iter = iter
-                self.snapshot(sess, iter)
-
-        if last_snapshot_iter != iter:
-            self.snapshot(sess, iter)
+        #
+        #     # TODO 每一千次干什么事，这里要看！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+        #     if (iter+1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
+        #         last_snapshot_iter = iter
+        #         self.snapshot(sess, iter)
+        #
+        # if last_snapshot_iter != iter:
+        #     self.snapshot(sess, iter)
 
 
 

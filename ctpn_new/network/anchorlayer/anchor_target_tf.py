@@ -44,8 +44,8 @@ def anchor_target_layer(cfg, rpn_cls_score, gt_boxes, im_info, _feat_stride=(16,
 
     # 前者的shape为(1, 10, 4), 后者的shape为(像素数, 1, 4)两者相加
     # 结果为(像素数, 10, 4) python数组广播相加。。。。。。。有待理解
-    all_anchors = (_anchors.reshape((1, A, cfg.TRAIN.COORDINAE_NUM)) +
-                   shifts.reshape((1, K, cfg.TRAIN.COORDINAE_NUM)).transpose((1, 0, 2)))
+    all_anchors = (_anchors.reshape((1, A, cfg.TRAIN.COORDINATE_NUM)) +
+                   shifts.reshape((1, K, cfg.TRAIN.COORDINATE_NUM)).transpose((1, 0, 2)))
 
     # 至此，每一行为一个anchor， 每十行为一个滑动窗对应的十个anchor，第二个十行为往右走所对应的十个anchors
     all_anchors = all_anchors.reshape((K * A, cfg.TRAIN.COORDINAE_NUM))
