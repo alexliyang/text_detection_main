@@ -3,9 +3,11 @@ import numpy as np
 import numpy.random as npr
 from .generate_anchors import generate_anchors
 from .iou import bbox_overlaps
+from lib import load_config
 
+cfg = load_config()
 
-def anchor_target_layer(cfg, rpn_cls_score, gt_boxes, im_info, _feat_stride=(16,)):
+def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride=(16,)):
 
     # 生成基本的anchor,一共10个,返回一个10行4列矩阵，每行为一个anchor，返回的只是基于中心的相对坐标
     _anchors = generate_anchors()
@@ -44,11 +46,11 @@ def anchor_target_layer(cfg, rpn_cls_score, gt_boxes, im_info, _feat_stride=(16,
 
     # 前者的shape为(1, 10, 4), 后者的shape为(像素数, 1, 4)两者相加
     # 结果为(像素数, 10, 4) python数组广播相加。。。。。。。有待理解
-    all_anchors = (_anchors.reshape((1, A, cfg.TRAIN.COORDINAE_NUM)) +
-                   shifts.reshape((1, K, cfg.TRAIN.COORDINAE_NUM)).transpose((1, 0, 2)))
+    all_anchors = (_anchors.reshape((1, A, cfg.TRAIN.COORDINATE_NUM)) +
+                   shifts.reshape((1, K, cfg.TRAIN.COORDINATE_NUM)).transpose((1, 0, 2)))
 
     # 至此，每一行为一个anchor， 每十行为一个滑动窗对应的十个anchor，第二个十行为往右走所对应的十个anchors
-    all_anchors = all_anchors.reshape((K * A, cfg.TRAIN.COORDINAE_NUM))
+    all_anchors = all_anchors.reshape((K * A, cfg.TRAIN.COORDINATE_NUM))
     total_anchors = int(K * A)
 
     # 仅保留那些还在图像内部的anchor
@@ -142,7 +144,7 @@ def anchor_target_layer(cfg, rpn_cls_score, gt_boxes, im_info, _feat_stride=(16,
     rpn_labels = labels
 
     # bbox_targets
-    bbox_targets = bbox_targets.reshape((1, height, width, A * cfg.TRAIN.COORDINAE_NUM))  # reshape
+    bbox_targets = bbox_targets.reshape((1, height, width, A * cfg.TRAIN.COORDINATE_NUM))  # reshape
 
     rpn_bbox_targets = bbox_targets
 

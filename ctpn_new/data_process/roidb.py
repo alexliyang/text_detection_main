@@ -13,8 +13,9 @@ def get_training_roidb(config):
     # 是否要翻转图片，如果需要的话将翻转的图片追加
     if config.TRAIN.USE_FLIPPED:
         base_roidb.append_flipped_images()
-
     print('done')
+    return base_roidb
+
 
 
 class roidb(object):

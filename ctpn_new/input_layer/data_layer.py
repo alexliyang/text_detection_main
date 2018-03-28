@@ -2,14 +2,15 @@
 InputLayer是整个网络的输入层，在每iter中，需要获取下一个batch的数据，其核心函数是forward
 """
 import numpy as np
-from minibatch import get_minibatch
+from .minibatch import get_minibatch
 
 
 class InputLayer(object):
     def __init__(self, roidb, num_classes=2, config=None):
-        assert not config, 'Input layer lack config'
+        if config == None:
+            raise RuntimeError('Input layer lack config')
         self._cfg = config
-        self._roidb = roidb
+        self._roidb = roidb.roidb
         self._num_classes = num_classes
         self._shuffle_roidb_inds()
 
@@ -41,3 +42,7 @@ class InputLayer(object):
     def forward(self):
         """Get blobs and copy them into this layer's top blob vector."""
         return self._get_next_minibatch()
+
+
+def get_data_layer(roidb, config):
+    return InputLayer(roidb, config=config)

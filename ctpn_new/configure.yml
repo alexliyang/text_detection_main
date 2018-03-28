@@ -2,7 +2,7 @@ PREPARE:
   SLOP_THRESHOLD: 1
 TRAIN:
   USE_FLIPPED: True
-  USE_CACHED: False
+  USE_CACHED: True
   CACHE_PATH: dataset/cache
   TRAIN_PATH: dataset/for_train
   COORDINATE_NUM: 4
@@ -24,5 +24,6 @@ TRAIN:
   STEPSIZE: 30000
   GAMMA: 0.1
   DISPLAY: 100
+  MAX_ITER: 50000
 TEST:
 

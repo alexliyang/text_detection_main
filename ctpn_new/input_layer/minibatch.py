@@ -102,7 +102,7 @@ def prep_im_for_blob(im, pixel_means, target_size, max_size, cfg):
     # if cfg.TRAIN.RANDOM_DOWNSAMPLE:
     #     r = 0.6 + np.random.rand() * 0.4
     #     im_scale *= r
-    im = cv2.resize(im, None, None, fx=im_scale, fy=im_scale,
-                    interpolation=cv2.INTER_LINEAR)
+    # im = cv2.resize(im, None, None, fx=im_scale, fy=im_scale,
+    #                 interpolation=cv2.INTER_LINEAR)
 
     return im, im_scale

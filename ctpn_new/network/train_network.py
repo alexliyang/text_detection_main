@@ -4,8 +4,9 @@ from .base_network import base_network as bn
 
 class train_network(bn):
     def __init__(self, cfg):
-        super().__init__(cfg)
+        # super().__init__(cfg)
         # 数据的输入入口
+        self._cfg = cfg
         self.data = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='data')
         # 图像信息，包含宽，高，缩放比例
         self.im_info = tf.placeholder(tf.float32, shape=[None, 3], name='im_info')
@@ -49,10 +50,10 @@ class train_network(bn):
 
         # 往两个方向走，一个用于给类别打分，一个用于盒子回归
         # 用于盒子回归的，输入是10个anchor，每个anchor有4个坐标，所以输出是[1, H, W, 40]
-        (self.feed('lstm_o').lstm_fc(512, 10 * self._cfg.COORDINAE_NUM, name='rpn_bbox_pred'))
+        (self.feed('lstm_o').lstm_fc(512, 10 * self._cfg.TRAIN.COORDINATE_NUM, name='rpn_bbox_pred'))
 
         # 用于盒子分类的，输出是[1, H, W, 20]
-        (self.feed('lstm_o').lstm_fc(512, 10 * self._cfg.COORDINAE_NUM, name='rpn_cls_score'))
+        (self.feed('lstm_o').lstm_fc(512, 10 * self._cfg.TRAIN.COORDINATE_NUM, name='rpn_cls_score'))
 
         """
         返回值如下
