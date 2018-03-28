@@ -1,18 +1,19 @@
 import sys
 import os
+import pprint
+
+sys.path.append(os.getcwd())
+
 from network.train_network import get_train_network
 from ctpn.train_net import train_net
-sys.path.append(os.getcwd())
-import pprint
 from lib.load_config import load_config
-
+from data_process.roidb import get_training_roidb
+from lib import get_path
 
 if __name__ == '__main__':
     cfg = load_config()
     print('Using config:')
     pprint.pprint(cfg)
-    print(cfg.TRAIN.USE_CACHE)
-
 
     """
     @params
@@ -20,15 +21,13 @@ if __name__ == '__main__':
     """
     roidb = get_training_roidb(cfg)  # 返回roidb roidb就是我们需要的对象实例
 
-    output_dir = ''
-    log_dir = ''
-    print('Output will be saved to `{:s}`'.format(output_dir))
+    output_dir = get_path('dataset/output')
+    log_dir = get_path('dataset/log')
 
-    print('Logs will be saved to `{:s}`'.format(log_dir))
+    print('Output will be saved to {:s}'.format(output_dir))
+    print('Logs will be saved to {:s}'.format(log_dir))
 
-
-
-    # """ 
+    # """
     # @params 
     # network ctpn_network 实例
     # roidb roi 列表
@@ -38,10 +37,7 @@ if __name__ == '__main__':
     # pretrain_model 预训练VGG16模型 绝对路径
     # restore bool值 是否从checkpoints断点开始恢复上次中断的训练
     # """
-
+    vgg16_net_param = 'dataset/pretrain/VGG_imagenet.npy'
     network = get_train_network(cfg)
-    train_net(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore=False)
-
-
-
-
+    train_net(cfg, network, roidb, output_dir, log_dir, max_iter=cfg.TRAIN.MAX_ITER, pretrain_model=vgg16_net_param,
+              restore=False)
