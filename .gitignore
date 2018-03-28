@@ -4,3 +4,4 @@ ctpn_new/dataset/*
 ctpn_new/.idea/*
 ctpn_new/**/__pycache__/*.pyc
 ctpn_new/analysis/tmp/*
+ctpn_new/analysis/.ipynb_checkpoints/*
