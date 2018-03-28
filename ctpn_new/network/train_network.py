@@ -4,8 +4,9 @@ from .base_network import base_network as bn
 
 class train_network(bn):
     def __init__(self, cfg):
-        super().__init__(cfg)
+        # super().__init__(cfg)
         # 数据的输入入口
+        self._cfg = cfg
         self.data = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='data')
         # 图像信息，包含宽，高，缩放比例
         self.im_info = tf.placeholder(tf.float32, shape=[None, 3], name='im_info')

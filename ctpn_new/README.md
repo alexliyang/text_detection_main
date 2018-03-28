@@ -16,7 +16,7 @@ ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操�
           |___lib 运行时所需要的某些cython扩展
           |___prepare 数据预处理脚本，结果直接输出到dataset
           |___run 训练数据和测试数据程序的入口
-          |___config.yml 全局配置 唯一配置
+          |___configure.yml 全局配置 唯一配置
 ```
 **所有程序的运行都在ctpn_new目录下运行，书写时请注意包和模块的路径问题**
 #### 数据处理格式说明
@@ -29,8 +29,11 @@ ctpn_new--|___ctpn 网络抽象层，以及网络运行时需要做的一些操�
    ----|..........
    | train_set.txt 保存所有训练样本对应的文件名 每行为一张图片的信息
 ```
+说明：Imageinfo下的每个txt格式变更，原来~~xmin,ymin,xmax,ymax,width,height,channel~~弃用，新的格式为**xmin,ymin,xmax,ymax**,
+train_set.txt格式变为 **xxxx.jpg,scale,width,height,channel, scale是缩放比例**
 > 说明：Imageinfo下的每个txt格式变更，原来~~xmin,ymin,xmax,ymax,width,height,channel~~弃用，新的格式为**xmin,ymin,xmax,ymax**,
-> train_set.txt格式变为 **xxxx.jpg,width,height,channel**
+> train_set.txt格式变为 **xxxx.jpg,width,height,channel,scale** scale为缩放比例
+>>>>>>> 5a7160d269d313d7fa13d18bd4633b7bf6c4ec20
 
 **将原始数据放在dataset/ICPR_text_train下，文件夹分别为image和text, 两个文件夹的数据必须对应一致。在ctpn_new目录下运行预处理脚本, 处理后的数据将存在dataset/for_train下**
 ## 重要提示 请大家在书写代码之前确认.gitignore中已经加入了如下的语句,并做一次提交, 然后在开始写代码：
@@ -60,6 +63,7 @@ dataset---|___checkpoints tensorflow断点存储目录
 
 ```
 **为增加程序的鲁棒性，所欲的路径在书写代码都要判断路径是否存在，若不存在则创建**
+
 数据处理部分，建议做一个类imagedatabese（名字无所谓），类里面有一个关键属性，就是roidb。roidb是一个列表，其长度等于图片的张数，列表的每个元素都是一个字典，一个字典包含列一张图片的全部信息，字典先包含如下键和值：
 - image_name：图片的名字
 - image_scale：图片的缩放比例
@@ -69,4 +73,7 @@ dataset---|___checkpoints tensorflow断点存储目录
 
 不需要**gt_ishard,dont_care_area**这两个键
 源代码里面有一个类RoiDataLayer，他的输入参数之一是imagedatabase类的的imdb属性。该类的核心功能是根据imdb生成可以输入到网络的blobs，其核心函数是源代码中的get_next_minibach()，该函数的功能是返回一个blobs，并把指针下移一位，图片都不需要翻转。
+
+### 2018.3.27更新
+数据预处理、roidb模块、网络模块初步完成，下一步可以开始进行测试。开始着手分析具体每张图片中文本框的形状分布。
 

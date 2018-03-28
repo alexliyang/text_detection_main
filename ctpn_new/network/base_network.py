@@ -1,5 +1,6 @@
 import tensorflow as tf
 from .anchorlayer.anchor_target_tf import anchor_target_layer
+
 DEFAULT_PADDING = "SAME"
 
 
@@ -27,6 +28,7 @@ def layer(op):
 
 
 class base_network(object):
+
     def __init__(self, cfg):
         self.inputs = []  # 用于存储临时数据
         self.layers = dict()  # 用于存储每一层的数据
@@ -43,7 +45,7 @@ class base_network(object):
             if isinstance(_layer, str):  # 从子类喂入
                 data = self.layers[_layer]
                 self.inputs.append(data)
-            else:                        # 从装饰器中喂入
+            else:  # 从装饰器中喂入
                 self.inputs.append(_layer)
         return self
 
@@ -80,11 +82,11 @@ class base_network(object):
     def l2_regularizer(self, weight_decay=0.0005, scope=None):
         def regularizer(tensor):
             with tf.name_scope(scope, default_name='l2_regularizer', values=[tensor]):
-                l2_weight = tf.convert_to_tensor(weight_decay, dtype=tensor.dtype.base_dtyp, name='weight_decay')
+                l2_weight = tf.convert_to_tensor(weight_decay, dtype=tensor.dtype.base_dtype, name='weight_decay')
                 # tf.nn.l2_loss(t)的返回值是output = sum(t ** 2) / 2
                 return tf.multiply(l2_weight, tf.nn.l2_loss(tensor), name='value')
-        return regularizer
 
+        return regularizer
 
     @layer
     def max_pool(self, input, k_h, k_w, s_h, s_w, name, padding=DEFAULT_PADDING):
@@ -103,7 +105,7 @@ class base_network(object):
             shape = tf.shape(img)
             N, H, W, C = shape[0], shape[1], shape[2], shape[3]
             img = tf.reshape(img, [N * H, W, C])
-            img.set_shape([None, None, d_i])   # 第一次 d_i = 512
+            img.set_shape([None, None, d_i])  # 第一次 d_i = 512
 
             lstm_fw_cell = tf.contrib.rnn.LSTMCell(d_h, state_is_tuple=True)
             # 第一次d_h是128, 隐层的维度
@@ -117,13 +119,14 @@ class base_network(object):
             lstm_out = tf.concat(lstm_out, axis=-1)
 
             # 每一行对应一个像素，即一个特征每个特征由256维向量表示，lstm_out是一个H×256的输出
-            lstm_out = tf.reshape(lstm_out, [N * H * W, 2*d_h])
+            lstm_out = tf.reshape(lstm_out, [N * H * W, 2 * d_h])
 
             init_weights = tf.truncated_normal_initializer(stddev=0.1)
             init_biases = tf.constant_initializer(0.0)
             # 初始化权重，权重是需要正则化的
-            weights = tf.get_variable(name='weights', shape=[2*d_h, d_o], initializer=init_weights,
-                                      trainable=trainable, regularizer=self.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
+            weights = tf.get_variable(name='weights', shape=[2 * d_h, d_o], initializer=init_weights,
+                                      trainable=trainable,
+                                      regularizer=self.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
             # 偏执不需要正则化
             biases = tf.get_variable(name='biases', shape=[d_o], initializer=init_biases, trainable=trainable)
 
@@ -137,7 +140,7 @@ class base_network(object):
             shape = tf.shape(input)
             N, H, W, C = shape[0], shape[1], shape[2], shape[3]
             # input的每一行代表一个像素， 第一次C=512
-            input = tf.reshape(input, [N*H*W, C])
+            input = tf.reshape(input, [N * H * W, C])
 
             init_weights = tf.truncated_normal_initializer(0.0, stddev=0.01)
             init_biases = tf.constant_initializer(0.0)
@@ -151,17 +154,12 @@ class base_network(object):
             out = tf.matmul(input, weights) + biases
             return tf.reshape(out, [N, H, W, int(d_o)])
 
-
-
-
-
-
     @layer
     def anchor_target_layer(self, input, _feat_stride, anchor_scales, name):
         # input里面装着'rpn_cls_score', 'gt_boxes', 'im_info'
         # _feat_stride = [16,], anchor_scales = [16]
         # input的最后一个维度必须是3 ，即'rpn_cls_score', 'gt_boxes', 'im_info'
-        assert input.get_shape()[-1] == 3
+        #  assert input.get_shape()[-1] == 3
         if isinstance(input[0], tuple):  # 这里if语句在前期训练阶段没看到成立
             input[0] = input[0][0]
 
@@ -175,11 +173,11 @@ class base_network(object):
 
             """
             rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer,
-                                                      [self._cfg, input[0], input[1], input[2],
-                                                       _feat_stride, anchor_scales],
+                                                      [input[0], input[1], input[2],
+                                                       _feat_stride],
                                                       [tf.float32, tf.float32])
 
-            rpn_labels = tf.convert_to_tensor(rpn_labels, name='rpn_labels')
+            rpn_labels = tf.convert_to_tensor(tf.cast(rpn_labels, tf.int32), name='rpn_labels')
             rpn_bbox_targets = tf.convert_to_tensor(rpn_bbox_targets, name='rpn_bbox_targets')
 
             # TODO 这里暂时只需要返回标签和anchor回归目标就可以了，后续会增加side refinement
@@ -191,7 +189,6 @@ class base_network(object):
         # transpose: (1, H, W, A x d) -> (1, H, WxA, d)
         return tf.reshape(input, [input_shape[0], input_shape[1], -1, int(d)], name=name)
 
-
     @layer
     def softmax(self, input, name):
         input_shape = tf.shape(input)
@@ -201,13 +198,13 @@ class base_network(object):
         else:
             return tf.nn.softmax(input, name=name)
 
-    def get_output(self, laye):
+    def get_output(self, layer):
         try:
-            laye = self.layers[laye]
+            layer = self.layers[layer]
         except KeyError:
             print(list(self.layers.keys()))
-            raise KeyError('Unknown layer name fed: %s' % laye)
-        return laye
+            raise KeyError('Unknown layer name fed: %s' % layer)
+        return layer
 
     def build_loss(self):
         # 这一步输出的只是分数，没有softmax， 形状为(HxWxA, 2)
@@ -249,8 +246,9 @@ class base_network(object):
 
         # 有内权重，是因为只需计算y值和高度的回归;有外权重，是因为只需计算正例的box回归
         rpn_loss_box_n = tf.reduce_sum(self.smooth_l1_dist((rpn_bbox_pred - rpn_bbox_targets)), reduction_indices=[1])
+        rpn_loss_box = tf.reduce_sum(rpn_loss_box_n) / (tf.reduce_sum(tf.cast(fg_keep, tf.float32)) + 1)
 
-        rpn_loss_box = tf.reduce_sum(rpn_loss_box_n) / (tf.shape(fg_keep)[0] + 1)
+        # rpn_loss_box = tf.reduce_sum(rpn_loss_box_n) / (tf.shape(fg_keep)[0] + 1)
         rpn_cross_entropy = tf.reduce_mean(rpn_cross_entropy_n)
 
         model_loss = rpn_cross_entropy + rpn_loss_box
@@ -266,6 +264,13 @@ class base_network(object):
     def smooth_l1_dist(deltas, sigma2=9.0, name='smooth_l1_dist'):
         with tf.name_scope(name=name) as scope:
             deltas_abs = tf.abs(deltas)
-            smoothL1_sign = tf.cast(tf.less(deltas_abs, 1.0/sigma2), tf.float32)
-            return tf.square(deltas) * 0.5 * sigma2 * smoothL1_sign +\
+            smoothL1_sign = tf.cast(tf.less(deltas_abs, 1.0 / sigma2), tf.float32)
+            return tf.square(deltas) * 0.5 * sigma2 * smoothL1_sign + \
                    (deltas_abs - 0.5 / sigma2) * tf.abs(smoothL1_sign - 1)
+
+    @layer
+    def spatial_softmax(self, input, name):
+        input_shape = tf.shape(input)
+        # d = input.get_shape()[-1]
+        return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
+                          [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)

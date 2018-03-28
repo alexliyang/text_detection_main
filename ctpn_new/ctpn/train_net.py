@@ -1,20 +1,20 @@
 import tensorflow as tf
 import os
-from ctpn.timer import Timer
+from lib import Timer
+from input_layer import get_data_layer
 
 
 class SolverWrapper(object):
-    def __init__(self, cfg, network,roidb,output_dir,log_dir,max_iter,pretrain_model,restore):
+    def __init__(self, cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore):
         self._cfg = cfg
         self.net = network
-                              # 所有图片的imdb列表
-        self.roidb = roidb                            # 所有图片的GT列表，每个元素是一个字典，字典里面包含列所有的box
+        # 所有图片的imdb列表
+        self.roidb = roidb  # 所有图片的GT列表，每个元素是一个字典，字典里面包含列所有的box
         self.output_dir = output_dir
         self.pretrained_model = pretrain_model
 
         # For checkpoint
-        self.saver = tf.train.Saver(max_to_keep=100,write_version=tf.train.SaverDef.V2)
-
+        self.saver = tf.train.Saver(max_to_keep=100, write_version=tf.train.SaverDef.V2)
 
     def snapshot(self, sess, iter):
         pass
@@ -25,8 +25,7 @@ class SolverWrapper(object):
     def train_model(self, sess, max_iters, restore=False):
         # 根据全部的roidb，获得一个data_layer对象
         # data_layer对象是一批一批地传递处理好了的数据
-        # TODO 这里是数据处理部分，有待完成
-        data_layer = get_data_layer(self.roidb, self.imdb.num_classes)
+        data_layer = get_data_layer(self.roidb, self._cfg)
 
         total_loss, model_loss, rpn_cross_entropy, rpn_loss_box = self.net.build_loss()
 
@@ -39,7 +38,7 @@ class SolverWrapper(object):
             opt = tf.train.RMSPropOptimizer(self._cfg.TRAIN.LEARNING_RATE)
         else:
             # lr = tf.Variable(0.0, trainable=False)
-            momentum = self._cfg.TRAIN.MOMENTUM   # 0.9
+            momentum = self._cfg.TRAIN.MOMENTUM  # 0.9
             opt = tf.train.MomentumOptimizer(lr, momentum)
 
         global_step = tf.Variable(0, trainable=False)
@@ -87,7 +86,6 @@ class SolverWrapper(object):
                 sess.run(tf.assign(lr, lr.eval() * self._cfg.TRAIN.GAMMA))
                 print("learning rate at step {} is {}".format(iter, lr))
 
-            # TODO 有待完成
             blobs = data_layer.forward()
 
             feed_dict = {
@@ -98,10 +96,10 @@ class SolverWrapper(object):
             }
             res_fetches = []
             fetch_list = [total_loss, model_loss, rpn_cross_entropy,
-                          rpn_loss_box,  train_op] + res_fetches
+                          rpn_loss_box, train_op] + res_fetches
 
             total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val, \
-                summary_str, _ = sess.run(fetches=fetch_list, feed_dict=feed_dict)
+            summary_str, _ = sess.run(fetches=fetch_list, feed_dict=feed_dict)
 
             _diff_time = timer.toc(average=False)
 
@@ -111,7 +109,7 @@ class SolverWrapper(object):
                                                       rpn_loss_cls_val, rpn_loss_box_val, lr.eval()))
                 print('speed: {:.3f}s / iter'.format(_diff_time))
 
-# =====================================================================================================
+            # =====================================================================================================
             # 郭义，到此投笔
 
 
@@ -127,18 +125,15 @@ class SolverWrapper(object):
         #     self.snapshot(sess, iter)
 
 
-
-
-def train_net(cfg,network,roidb,output_dir,log_dir,max_iter,pretrain_model,restore):
+def train_net(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore):
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allocator_type = 'BFC'
     config.gpu_options.per_process_gpu_memory_fraction = 0.9
-    
+
     with tf.Session(config=config) as sess:
         '''sw = solver wrapper'''
         sw = SolverWrapper(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore)
         print('Solving...')
 
-        sw.train_model()
+        sw.train_model(sess=sess,max_iters=max_iter)
         print('done solving')
-
