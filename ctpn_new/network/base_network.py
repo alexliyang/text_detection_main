@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from .anchorlayer.anchor_target_tf import anchor_target_layer
 
 DEFAULT_PADDING = "SAME"
@@ -49,6 +50,24 @@ class base_network(object):
                 self.inputs.append(_layer)
         return self
 
+    def load(self, data_path, session, ignore_missing=False):
+
+        # data_dict是一个字典， 键为“conv5_1”, "conv3_2"等等
+        # 而该字典的值又是字典，键为”biases"和"weights"
+        data_dict = np.load(data_path, encoding='latin1').item()
+        for key in data_dict.keys():
+
+            # key 是“conv5_1”, "conv3_2"等等
+            with tf.variable_scope(key, reuse=True):
+                for subkey in data_dict[key]:
+                    try:
+                        var = tf.get_variable(subkey)
+                        session.run(var.assign(data_dict[key][subkey]))
+                        print("assign pretrain model "+subkey+ " to "+key)
+                    except ValueError:
+                        print("ignore "+key)
+                        if not ignore_missing:
+                            raise
     @layer
     def conv(self, input, k_h, k_w, c_o, s_h, s_w, name, biased=True,
              relu=True, padding=DEFAULT_PADDING, trainable=True):
