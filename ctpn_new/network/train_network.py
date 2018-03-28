@@ -70,11 +70,5 @@ class train_network(bn):
              .spatial_softmax(name='rpn_cls_prob'))  # 执行softmax，再转换为(1, H, WxA,2)
 
 
-
-
-
-
-
-
 def get_train_network(cfg):
     return train_network(cfg)

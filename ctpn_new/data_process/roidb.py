@@ -73,7 +73,8 @@ class roidb(object):
     def _gt_roidb(self):
         cache_file = os.path.join(self.config.TRAIN.CACHE_PATH, 'roidb.pkl')
 
-        print(cache_file)
+
+        # print(cache_file)
         gt_roidb = None
         if os.path.exists(cache_file) and self.config.TRAIN.USE_CACHED:
             with open(cache_file, 'rb') as fid:
@@ -81,12 +82,11 @@ class roidb(object):
             print('gt roidb loaded from {}'.format(cache_file))
 
         else:
-            print(self._image_index)
+            # print(self._image_index)
             gt_roidb = [self._process_each_image_gt(index, image_name)
                         for index, image_name in enumerate(self._image_index)]
-            # if not os.path.exists(cache_file):
-            #     os.makedirs(cache_file)
-
+            if not os.path.exists(self.config.TRAIN.CACHE_PATH):
+                os.makedirs(self.config.TRAIN.CACHE_PATH)
             with open(cache_file, 'wb') as fid:
                 pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
 
@@ -96,7 +96,7 @@ class roidb(object):
     def _process_each_image_gt(self, index, image_name):
 
         filename = os.path.join(self._image_gt, os.path.splitext(image_name)[0] + '.txt')
-        print(filename)
+        # print(filename)
         with open(filename, 'r') as f:
             gt_boxes = f.readlines()
 
