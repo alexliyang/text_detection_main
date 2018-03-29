@@ -2,7 +2,8 @@ import tensorflow as tf
 import os
 from lib import Timer
 from input_layer import get_data_layer
-
+from exceptions.myException import NoPositiveError
+import sys
 
 class SolverWrapper(object):
     def __init__(self, cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
@@ -88,7 +89,8 @@ class SolverWrapper(object):
         loss_list = [total_loss, model_loss, rpn_cross_entropy, rpn_loss_box]
         train_list = [train_op]
 
-        for iter in range(restore_iter, max_iters):
+        # for iter in range(restore_iter, max_iters):
+        for iter in range(0,2):
             timer.tic()
             # learning rate
             if iter != 0 and iter % self._cfg.TRAIN.STEPSIZE == 0:  # 每30000轮，学习率变为原来的0.1
@@ -97,6 +99,7 @@ class SolverWrapper(object):
 
             blobs = data_layer.forward()
             gt_boxes = blobs['gt_boxes']
+            print(blobs.keys())
             # 确保 x1 =< x2, y1 =< y2
             assert gt_boxes.shape[0] > 0, "the number of gt_boxes must be lager than zero"
             assert all(gt_boxes[:, 2] >= gt_boxes[:, 0])
@@ -108,8 +111,11 @@ class SolverWrapper(object):
                 self.net.keep_prob: 0.5,
                 self.net.gt_boxes: gt_boxes,  # GT_boxes信息，N×4矩阵，每一行为一个gt_box，分别代表x1,y1,x2,y2
             }
-
-            _ = sess.run(fetches=train_list, feed_dict=feed_dict)
+            try:
+                _ = sess.run(fetches=train_list, feed_dict=feed_dict)
+            except:
+                print("warning: abandon a picture named {}".format(blobs['im_name']))
+                continue
 
             _diff_time = timer.toc(average=False)
 

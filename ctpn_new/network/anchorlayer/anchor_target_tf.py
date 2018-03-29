@@ -4,7 +4,7 @@ import numpy.random as npr
 from .generate_anchors import generate_anchors
 from .iou import bbox_overlaps
 from lib import load_config
-
+from exceptions.myException import NoPositiveError
 cfg = load_config()
 
 
@@ -110,7 +110,10 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     # TODO 这个后期可能还需要修改，毕竟如果使用的是字符的片段，那个正样本的数量是很多的。
     num_fg = int(cfg.TRAIN.RPN_FG_FRACTION * cfg.TRAIN.RPN_BATCHSIZE)  # 0.5*300
     fg_inds = np.where(labels == 1)[0]
-    assert len(fg_inds) > 0, "The number of positive examples is zero!"
+
+    if not len(fg_inds) > 0:
+        raise NoPositiveError("The number of positive proposals must be lager than zero")
+
     if len(fg_inds) > num_fg:
         disable_inds = npr.choice(
             fg_inds, size=(len(fg_inds) - num_fg), replace=False)  # 随机去除掉一些正样本
@@ -126,7 +129,8 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
 
     bg_inds = np.where(labels == 0)[0]
 
-    assert len(bg_inds) > 0, "The number of positive examples is zero!"
+    if not len(bg_inds) > 0:
+        raise NoPositiveError("The number of negtive proposals must be lager than zero")
 
     if len(bg_inds) > num_bg:
         disable_inds = npr.choice(
@@ -235,6 +239,6 @@ def _compute_targets(ex_rois, labels, gt_rois):
 
     # bbox_transform函数的输入是anchors， 和GT的坐标部分
     # 输出是一个N×2的矩阵，每行表示一个anchor与对应的IOU最大的GT的y,h回归,
-    return bbox_transform(ex_rois,labels, gt_rois).astype(np.float32, copy=False)
+    return bbox_transform(ex_rois, labels, gt_rois).astype(np.float32, copy=False)
 
 
