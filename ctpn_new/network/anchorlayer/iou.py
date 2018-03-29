@@ -13,6 +13,7 @@ def bbox_overlaps(anchors, gt_boxes):
     -------
     overlaps: (N, K) ndarray of overlap between boxes and query_boxes
     """
+
     N = anchors.shape[0]
     K = gt_boxes.shape[0]
     overlaps = np.zeros((N, K), dtype=np.float32)
