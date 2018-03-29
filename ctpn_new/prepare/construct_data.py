@@ -20,8 +20,8 @@ from PIL import Image
 
 image_dir = "./dataset/ICPR_text_train/image"  # 原始训练数据集图像目录
 txt_dir = "./dataset/ICPR_text_train/text"   # 原始训练数据集txt文本目录
-txtfortrain_dir = "./dataset/for_train/Imageinfo" # 保存每张图片对应的txt文本的目录
-imagefortain_dir = "./dataset/for_train/Imageset" # 保存图片文件的目录
+txtfortrain_dir = "./dataset/for_train/Imageinfo"  # 保存每张图片对应的txt文本的目录
+imagefortain_dir = "./dataset/for_train/Imageset"  # 保存图片文件的目录
 
 if not os.path.exists(txtfortrain_dir):
     os.makedirs(txtfortrain_dir)
@@ -37,7 +37,7 @@ def rawdata2traindata(config):
 def imagedata_process(config):
     filename = "train_set.txt"
     pathdir = "./dataset/for_train"
-   #判断train_set.txt是否存在，存在则删除
+    # 判断train_set.txt是否存在，存在则删除
     if os.path.exists(pathdir + '/' + filename):
         os.remove(pathdir + '/' + filename)
     # 创建文件train_set.txt

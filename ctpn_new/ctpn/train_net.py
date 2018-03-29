@@ -15,15 +15,10 @@ class SolverWrapper(object):
         self.checkpoints_dir = checkpoints_dir
 
         # For checkpoint
-        self.saver = tf.train.Saver(max_to_keep=100, write_version=tf.train.SaverDef.V2)
+        self.saver = tf.train.Saver(max_to_keep=10, write_version=tf.train.SaverDef.V2)
 
     def snapshot(self, sess, iter):
 
-        # if not os.path.exists(self.output_dir):
-        #     os.makedirs(self.output_dir)
-        #
-        # infix = ('_' + self._cfg.TRAIN.SNAPSHOT_INFIX
-        #          if self._cfg.TRAIN.SNAPSHOT_INFIX != '' else '')
         filename = ('ctpn_iter_{:d}'.format(iter + 1) + '.ckpt')
         filename = os.path.join(self.checkpoints_dir, filename)
 
@@ -79,7 +74,7 @@ class SolverWrapper(object):
         # resuming a trainer
         if restore:  # restore为True表示训练过程中可能死机了， 现在重新启动训练
             try:
-                ckpt = tf.train.get_checkpoint_state(self.output_dir)
+                ckpt = tf.train.get_checkpoint_state(self.checkpoints_dir)
                 print('Restoring from {}...'.format(ckpt.model_checkpoint_path), end=' ')
                 self.saver.restore(sess, ckpt.model_checkpoint_path)
                 stem = os.path.splitext(os.path.basename(ckpt.model_checkpoint_path))[0]
@@ -88,8 +83,10 @@ class SolverWrapper(object):
                 print('done')
             except:
                 raise 'Check your pretrained {:s}'.format(ckpt.model_checkpoint_path)
-        last_snapshot_iter = -1
         timer = Timer()
+
+        loss_list = [total_loss, model_loss, rpn_cross_entropy, rpn_loss_box]
+        train_list = [train_op]
 
         for iter in range(restore_iter, max_iters):
             timer.tic()
@@ -99,23 +96,26 @@ class SolverWrapper(object):
                 print("learning rate at step {} is {}".format(iter, lr))
 
             blobs = data_layer.forward()
+            gt_boxes = blobs['gt_boxes']
+            # 确保 x1 =< x2, y1 =< y2
+            assert gt_boxes.shape[0] > 0, "the number of gt_boxes must be lager than zero"
+            assert all(gt_boxes[:, 2] >= gt_boxes[:, 0])
+            assert all(gt_boxes[:, 3] >= gt_boxes[:, 1])
 
             feed_dict = {
                 self.net.data: blobs['data'],  # 一个形状为[批数，宽，高，通道数]的源图片，命名为“data”
                 self.net.im_info: blobs['im_info'],  # 一个三维向量，包含宽，高，缩放比例
                 self.net.keep_prob: 0.5,
-                self.net.gt_boxes: blobs['gt_boxes'],  # GT_boxes信息，N×4矩阵，每一行为一个gt_box，分别代表x1,y1,x2,y2
+                self.net.gt_boxes: gt_boxes,  # GT_boxes信息，N×4矩阵，每一行为一个gt_box，分别代表x1,y1,x2,y2
             }
 
-            fetch_list = [total_loss, model_loss, rpn_cross_entropy,
-                          rpn_loss_box, train_op]
-
-            total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val, \
-            summary_str = sess.run(fetches=fetch_list, feed_dict=feed_dict)
+            _ = sess.run(fetches=train_list, feed_dict=feed_dict)
 
             _diff_time = timer.toc(average=False)
 
             if iter % self._cfg.TRAIN.DISPLAY == 0:
+                total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val \
+                    = sess.run(fetches=loss_list, feed_dict=feed_dict)
                 print('iter: %d / %d, total loss: %.4f, model loss: %.4f, rpn_loss_cls: %.4f, '
                       'rpn_loss_box: %.4f, lr: %f' % (iter, max_iters, total_loss_val, model_loss_val,
                                                       rpn_loss_cls_val, rpn_loss_box_val, lr.eval()))
@@ -125,8 +125,7 @@ class SolverWrapper(object):
             # 郭义，到此投笔
 
             # 每1000次保存一次模型
-            if (iter + 1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
-                last_snapshot_iter = iter
+            if (iter + 1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千次保存一下ckeckpoints
                 self.snapshot(sess, iter)
 
 
