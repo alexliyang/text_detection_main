@@ -2,8 +2,7 @@ import tensorflow as tf
 import os
 from lib import Timer
 from input_layer import get_data_layer
-from exceptions.myException import NoPositiveError
-import sys
+
 
 class SolverWrapper(object):
     def __init__(self, cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
@@ -11,9 +10,11 @@ class SolverWrapper(object):
         self.net = network
         # 所有图片的imdb列表
         self.roidb = roidb  # 所有图片的GT列表，每个元素是一个字典，字典里面包含列所有的box
-        self.output_dir = output_dir
+        # self.output_dir = output_dir
         self.pretrained_model = pretrain_model
         self.checkpoints_dir = checkpoints_dir
+        self._restore = restore
+        self.max_iter = max_iter
 
         # For checkpoint
         self.saver = tf.train.Saver(max_to_keep=10, write_version=tf.train.SaverDef.V2)
@@ -26,7 +27,7 @@ class SolverWrapper(object):
         self.saver.save(sess, filename)
         print('Wrote snapshot to: {:s}'.format(filename))
 
-    def train_model(self, sess, max_iters, restore=False):
+    def train_model(self, sess):
         # 根据全部的roidb，获得一个data_layer对象
         # data_layer对象是一批一批地传递处理好了的数据
         data_layer = get_data_layer(self.roidb, self._cfg)
@@ -62,7 +63,7 @@ class SolverWrapper(object):
         restore_iter = 0
 
         # load vgg16
-        if self.pretrained_model is not None and not restore:
+        if self.pretrained_model is not None and not self._restore:
             try:
                 print(('Loading pretrained model '
                        'weights from {:s}').format(self.pretrained_model))
@@ -73,7 +74,7 @@ class SolverWrapper(object):
                 raise 'Check your pretrained model {:s}'.format(self.pretrained_model)
 
         # resuming a trainer
-        if restore:  # restore为True表示训练过程中可能死机了， 现在重新启动训练
+        if self._restore:  # restore为True表示训练过程中可能死机了， 现在重新启动训练
             try:
                 ckpt = tf.train.get_checkpoint_state(self.checkpoints_dir)
                 print('Restoring from {}...'.format(ckpt.model_checkpoint_path), end=' ')
@@ -81,6 +82,7 @@ class SolverWrapper(object):
                 stem = os.path.splitext(os.path.basename(ckpt.model_checkpoint_path))[0]
                 restore_iter = int(stem.split('_')[-1])
                 sess.run(global_step.assign(restore_iter))
+                print("The starting iter is {:d}".format(restore_iter))
                 print('done')
             except:
                 raise 'Check your pretrained {:s}'.format(ckpt.model_checkpoint_path)
@@ -89,8 +91,7 @@ class SolverWrapper(object):
         loss_list = [total_loss, model_loss, rpn_cross_entropy, rpn_loss_box]
         train_list = [train_op]
 
-        # for iter in range(restore_iter, max_iters):
-        for iter in range(0,2):
+        for iter in range(restore_iter, self.max_iter):
             timer.tic()
             # learning rate
             if iter != 0 and iter % self._cfg.TRAIN.STEPSIZE == 0:  # 每30000轮，学习率变为原来的0.1
@@ -99,9 +100,12 @@ class SolverWrapper(object):
 
             blobs = data_layer.forward()
             gt_boxes = blobs['gt_boxes']
-            print(blobs.keys())
+
+            if not gt_boxes.shape[0] > 0:
+                print("warning: abandon a picture named {}, because it has "
+                      "no gt_boxes".format(blobs['im_name']))
+                continue
             # 确保 x1 =< x2, y1 =< y2
-            assert gt_boxes.shape[0] > 0, "the number of gt_boxes must be lager than zero"
             assert all(gt_boxes[:, 2] >= gt_boxes[:, 0])
             assert all(gt_boxes[:, 3] >= gt_boxes[:, 1])
 
@@ -123,7 +127,7 @@ class SolverWrapper(object):
                 total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val \
                     = sess.run(fetches=loss_list, feed_dict=feed_dict)
                 print('iter: %d / %d, total loss: %.4f, model loss: %.4f, rpn_loss_cls: %.4f, '
-                      'rpn_loss_box: %.4f, lr: %f' % (iter, max_iters, total_loss_val, model_loss_val,
+                      'rpn_loss_box: %.4f, lr: %f' % (iter, self.max_iter, total_loss_val, model_loss_val,
                                                       rpn_loss_cls_val, rpn_loss_box_val, lr.eval()))
                 print('speed: {:.3f}s / iter'.format(_diff_time))
 
@@ -142,8 +146,9 @@ def train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_ite
 
     with tf.Session(config=config) as sess:
         '''sw = solver wrapper'''
-        sw = SolverWrapper(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore)
+        sw = SolverWrapper(cfg, network, roidb, checkpoints_dir,
+                           output_dir, log_dir, max_iter, pretrain_model, restore)
         print('Solving...')
 
-        sw.train_model(sess=sess, max_iters=max_iter)
+        sw.train_model(sess=sess)
         print('done solving')
