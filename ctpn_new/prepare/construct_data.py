@@ -60,10 +60,10 @@ def imagedata_process(config):
             if height > 1200:
                 height = int(1200)
                 width = int(float(img_width) * 1200 / float(img_height))
-                txtdata_process(imagename, 1200, img_height, config)
+                txtdata_process(imagename, 1200, img_height, config, width, height)
                 scale = round(1200 / float(img_height), 2)
             else:
-                txtdata_process(imagename, 600, img_width, config)
+                txtdata_process(imagename, 600, img_width, config, width, height)
                 scale = round(600 / float(img_width), 2)
         else:
             height = int(600)
@@ -71,10 +71,10 @@ def imagedata_process(config):
             if width > 1200:
                 width = int(1200)
                 height = int(float(img_height) * 1200 / float(img_width))
-                txtdata_process(imagename, 1200, img_width, config)
+                txtdata_process(imagename, 1200, img_width, config, width, height)
                 scale = round(1200 / float(img_width), 2)
             else:
-                txtdata_process(imagename, 600, img_height, config)
+                txtdata_process(imagename, 600, img_height, config, width, height)
                 scale = round(600 / float(img_height), 2)
         trainImage = rawImage.resize((height, width), Image.ANTIALIAS) #图片缩放
         trainSize = trainImage.size  # 图片的高（行数）和宽（列数）
@@ -90,7 +90,7 @@ def imagedata_process(config):
         trainsetfile.write(image_filename + "," + str(train_width) + "," + str(train_height) + "," + str(3) + "," + str(scale)+ "\n")
     trainsetfile.close()
 
-def txtdata_process(file, numerator, denominator, config):
+def txtdata_process(file, numerator, denominator, config, width, height):
     if os.path.exists(txtfortrain_dir + '/' + file + ".txt"):
         os.remove(txtfortrain_dir + '/' + file + ".txt")
     # 创建用于训练的txt文件
@@ -111,8 +111,23 @@ def txtdata_process(file, numerator, denominator, config):
         ymin = round(min(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*float(numerator)/float(denominator), 2)
         xmax = round(max(float(tmp[0]), float(tmp[2]), float(tmp[4]), float(tmp[6]))*float(numerator)/float(denominator), 2)
         ymax = round(max(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*float(numerator)/float(denominator), 2)
-        fortraintxtfile.write(str(xmin) + "," + str(ymin) + "," + str(xmax) + "," + str(ymax) + "\n")
+        if testGT(xmin, ymin, xmax, ymax, width, height):
+            fortraintxtfile.write(str(xmin) + "," + str(ymin) + "," + str(xmax) + "," + str(ymax) + "\n")
     fortraintxtfile.close()
+
+def testGT(xmin, ymin, xmax, ymax, width, height):
+    """
+    判断GT是否在图像范围内
+    """
+    if xmin < 0 or xmin > width:
+        return False
+    if xmax < 0 or xmax > width:
+        return False
+    if ymin < 0 or ymin > height:
+        return False
+    if ymax < 0 or ymax > height:
+        return False
+    return True
 
 import sys
 sys.path.append(os.getcwd())
