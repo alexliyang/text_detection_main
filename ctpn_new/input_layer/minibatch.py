@@ -53,11 +53,11 @@ def _get_image_blob(roidb, scale_inds, cfg):
     num_images = len(roidb)
     processed_ims = []
     im_scales = []
-    assert num_images != 1, "image batch size must be one"
+    assert num_images == 1, "image batch size must be one"
 
     im = cv2.imread(roidb[0]['image_path'])
 
-    target_size = int(cfg.TRAIN.SCALES)
+    target_size = int(cfg.TRAIN.SCALES[0])
     im, im_scale = prep_im_for_blob(im, np.array(cfg.TRAIN.PIXEL_MEANS), target_size,
                                     cfg.TRAIN.MAX_SIZE, cfg)
     im_scales.append(im_scale)

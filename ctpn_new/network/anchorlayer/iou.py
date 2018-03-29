@@ -3,7 +3,7 @@ import numpy as np
 
 def bbox_overlaps(anchors, gt_boxes):
     assert anchors.shape[1] == 4
-    assert gt_boxes[1] == 4
+    assert gt_boxes.shape[1] == 4
     """
     Parameters
     ----------
