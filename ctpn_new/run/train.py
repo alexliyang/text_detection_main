@@ -24,6 +24,8 @@ if __name__ == '__main__':
     output_dir = get_path('dataset/output')
     log_dir = get_path('dataset/log')
 
+    checkpoints_dir = get_path(cfg.COMMON.CKPT)
+
     print('Output will be saved to {:s}'.format(output_dir))
     print('Logs will be saved to {:s}'.format(log_dir))
 
@@ -39,5 +41,5 @@ if __name__ == '__main__':
     # """
     vgg16_net_param = 'dataset/pretrain/VGG_imagenet.npy'
     network = get_train_network(cfg)
-    train_net(cfg, network, roidb, output_dir, log_dir, max_iter=cfg.TRAIN.MAX_ITER, pretrain_model=vgg16_net_param,
-              restore=False)
+    train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter=cfg.TRAIN.MAX_ITER,
+              pretrain_model=vgg16_net_param, restore=False)

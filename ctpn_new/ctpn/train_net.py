@@ -5,27 +5,27 @@ from input_layer import get_data_layer
 
 
 class SolverWrapper(object):
-    def __init__(self, cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore):
+    def __init__(self, cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
         self._cfg = cfg
         self.net = network
         # 所有图片的imdb列表
         self.roidb = roidb  # 所有图片的GT列表，每个元素是一个字典，字典里面包含列所有的box
         self.output_dir = output_dir
         self.pretrained_model = pretrain_model
+        self.checkpoints_dir = checkpoints_dir
 
         # For checkpoint
         self.saver = tf.train.Saver(max_to_keep=100, write_version=tf.train.SaverDef.V2)
 
     def snapshot(self, sess, iter):
 
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-
-        infix = ('_' + self._cfg.TRAIN.SNAPSHOT_INFIX
-                 if self._cfg.TRAIN.SNAPSHOT_INFIX != '' else '')
-        filename = (self._cfg.TRAIN.SNAPSHOT_PREFIX + infix +
-                    '_iter_{:d}'.format(iter + 1) + '.ckpt')
-        filename = os.path.join(self.output_dir, filename)
+        # if not os.path.exists(self.output_dir):
+        #     os.makedirs(self.output_dir)
+        #
+        # infix = ('_' + self._cfg.TRAIN.SNAPSHOT_INFIX
+        #          if self._cfg.TRAIN.SNAPSHOT_INFIX != '' else '')
+        filename = ('ctpn_iter_{:d}'.format(iter + 1) + '.ckpt')
+        filename = os.path.join(self.checkpoints_dir, filename)
 
         self.saver.save(sess, filename)
         print('Wrote snapshot to: {:s}'.format(filename))
@@ -124,27 +124,20 @@ class SolverWrapper(object):
             # =====================================================================================================
             # 郭义，到此投笔
 
-
-
-            # TODO 每一千次干什么事，这里要看！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-            if (iter+1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
+            # 每1000次保存一次模型
+            if (iter + 1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
                 last_snapshot_iter = iter
                 self.snapshot(sess, iter)
 
 
-
-        if last_snapshot_iter != iter:
-            self.snapshot(sess, iter)
-
-
-def train_net(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore):
+def train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allocator_type = 'BFC'
     config.gpu_options.per_process_gpu_memory_fraction = 0.9
 
     with tf.Session(config=config) as sess:
         '''sw = solver wrapper'''
-        sw = SolverWrapper(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore)
+        sw = SolverWrapper(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore)
         print('Solving...')
 
         sw.train_model(sess=sess, max_iters=max_iter)
