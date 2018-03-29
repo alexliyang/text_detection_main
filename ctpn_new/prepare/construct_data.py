@@ -117,7 +117,7 @@ def txtdata_process(file, numerator, denominator, config, width, height):
 
 def testGT(xmin, ymin, xmax, ymax, width, height):
     """
-    判断GT是否在图像范围内
+    判断GT是否在图像范围内且xmin<xmax,ymin<ymax
     """
     if xmin < 0 or xmin > width:
         return False
@@ -126,6 +126,8 @@ def testGT(xmin, ymin, xmax, ymax, width, height):
     if ymin < 0 or ymin > height:
         return False
     if ymax < 0 or ymax > height:
+        return False
+    if xmin >= xmax or ymin >= ymax:
         return False
     return True
 
