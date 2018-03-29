@@ -6,12 +6,19 @@ from .minibatch import get_minibatch
 
 
 class InputLayer(object):
-    def __init__(self, roidb, num_classes=2, config=None):
-        if config == None:
+    def __init__(self, roidb,  config=None):
+        if not config:
             raise RuntimeError('Input layer lack config')
         self._cfg = config
+        """
+        self_roidb是一个列表，列表的每个元素是一个字典，字典的键有
+        'image_name'：字符串，表示图片名字
+        'boxes'：N行4列矩阵，uint16 每一行表示一个GT
+        ”height“:高
+        "width"：宽
+        ”image_path“：图片路径
+        """
         self._roidb = roidb.roidb
-        self._num_classes = num_classes
         self._shuffle_roidb_inds()
 
     def _shuffle_roidb_inds(self):
@@ -37,7 +44,7 @@ class InputLayer(object):
         """
         db_inds = self._get_next_minibatch_inds()
         minibatch_db = [self._roidb[i] for i in db_inds]
-        return get_minibatch(minibatch_db, self._num_classes, cfg=self._cfg)
+        return get_minibatch(minibatch_db, cfg=self._cfg)
 
     def forward(self):
         """Get blobs and copy them into this layer's top blob vector."""

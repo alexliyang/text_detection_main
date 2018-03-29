@@ -1,5 +1,6 @@
 import tensorflow as tf
-from .anchorlayer.anchor_target_tf import anchor_target_layer
+import numpy as np
+from .anchorlayer.anchor_target_tf import anchor_target_layer_py
 
 DEFAULT_PADDING = "SAME"
 
@@ -8,7 +9,6 @@ DEFAULT_PADDING = "SAME"
 def layer(op):
     def layer_decorated(self, *args, **kwargs):
         name = kwargs['name']
-
         # 取出输入数据
         if len(self.inputs) == 0:
             raise RuntimeError('No input variables found for layer %s.' % name)
@@ -28,15 +28,16 @@ def layer(op):
 
 
 class base_network(object):
-
+    """
+    网络基类，核心属性有：
+    inputs： 列表，用于存储临时数据
+    layers： 字典，用于存储每一层的数据
+    _cfg： 配置文件
+    """
     def __init__(self, cfg):
         self.inputs = []  # 用于存储临时数据
         self.layers = dict()  # 用于存储每一层的数据
         self._cfg = cfg
-        self.setup()
-
-    def setup(self):  # 该类不能实例化，必须为子类继承
-        raise NotImplementedError('Must be subclassed.')
 
     def feed(self, *args):
         assert len(args) != 0, "the data to feed cannot be empty!"
@@ -155,13 +156,11 @@ class base_network(object):
             return tf.reshape(out, [N, H, W, int(d_o)])
 
     @layer
-    def anchor_target_layer(self, input, _feat_stride, anchor_scales, name):
+    def anchor_target_layer(self, input, _feat_stride, name):
         # input里面装着'rpn_cls_score', 'gt_boxes', 'im_info'
-        # _feat_stride = [16,], anchor_scales = [16]
+        # _feat_stride = [16,]
         # input的最后一个维度必须是3 ，即'rpn_cls_score', 'gt_boxes', 'im_info'
-        #  assert input.get_shape()[-1] == 3
-        if isinstance(input[0], tuple):  # 这里if语句在前期训练阶段没看到成立
-            input[0] = input[0][0]
+        assert len(input) == 3
 
         with tf.variable_scope(name) as scope:
             # 'rpn_cls_score', 'gt_boxes', 'im_info'
@@ -172,9 +171,8 @@ class base_network(object):
             rpn_bbox_targets 是(1, FM的高，FM的宽，20), 最后一个维度中，每四个表示一个anchor的回归 y,h
 
             """
-            rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer,
-                                                      [input[0], input[1], input[2],
-                                                       _feat_stride],
+            rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer_py,
+                                                      [input[0], input[1], input[2], _feat_stride],
                                                       [tf.float32, tf.float32])
 
             rpn_labels = tf.convert_to_tensor(tf.cast(rpn_labels, tf.int32), name='rpn_labels')
@@ -274,3 +272,23 @@ class base_network(object):
         # d = input.get_shape()[-1]
         return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
                           [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)
+
+    # @ staticmethod # 这里不要写成静态方法
+    def load(self, data_path, session, ignore_missing=False):
+
+        # data_dict是一个字典， 键为“conv5_1”, "conv3_2"等等
+        # 而该字典的值又是字典，键为”biases"和"weights"
+        data_dict = np.load(data_path, encoding='latin1').item()
+        for key in data_dict.keys():
+
+            # key 是“conv5_1”, "conv3_2"等等
+            with tf.variable_scope(key, reuse=True):
+                for subkey in data_dict[key]:
+                    try:
+                        var = tf.get_variable(subkey)
+                        session.run(var.assign(data_dict[key][subkey]))
+                        print("assign pretrain model "+subkey+ " to "+key)
+                    except ValueError:
+                        print("ignore "+key)
+                        if not ignore_missing:
+                            raise

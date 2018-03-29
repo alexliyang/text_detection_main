@@ -3,7 +3,7 @@ import numpy as np
 
 def bbox_overlaps(anchors, gt_boxes):
     assert anchors.shape[1] == 4
-    assert gt_boxes[1] == 4
+    assert gt_boxes.shape[1] == 4
     """
     Parameters
     ----------
@@ -13,6 +13,7 @@ def bbox_overlaps(anchors, gt_boxes):
     -------
     overlaps: (N, K) ndarray of overlap between boxes and query_boxes
     """
+
     N = anchors.shape[0]
     K = gt_boxes.shape[0]
     overlaps = np.zeros((N, K), dtype=np.float32)

@@ -17,10 +17,18 @@ class SolverWrapper(object):
         self.saver = tf.train.Saver(max_to_keep=100, write_version=tf.train.SaverDef.V2)
 
     def snapshot(self, sess, iter):
-        pass
 
-    def build_image_summary(self):
-        pass
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+
+        infix = ('_' + self._cfg.TRAIN.SNAPSHOT_INFIX
+                 if self._cfg.TRAIN.SNAPSHOT_INFIX != '' else '')
+        filename = (self._cfg.TRAIN.SNAPSHOT_PREFIX + infix +
+                    '_iter_{:d}'.format(iter + 1) + '.ckpt')
+        filename = os.path.join(self.output_dir, filename)
+
+        self.saver.save(sess, filename)
+        print('Wrote snapshot to: {:s}'.format(filename))
 
     def train_model(self, sess, max_iters, restore=False):
         # 根据全部的roidb，获得一个data_layer对象
@@ -45,7 +53,10 @@ class SolverWrapper(object):
         with_clip = True
         if with_clip:
             tvars = tf.trainable_variables()  # 获取所有的可训练参数
+            # 下面这句话会产生UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape.
+            # This may consume a large amount of memory
             grads, norm = tf.clip_by_global_norm(tf.gradients(total_loss, tvars), 10.0)
+
             train_op = opt.apply_gradients(list(zip(grads, tvars)), global_step=global_step)
         else:
             train_op = opt.minimize(total_loss, global_step=global_step)
@@ -57,7 +68,7 @@ class SolverWrapper(object):
         # load vgg16
         if self.pretrained_model is not None and not restore:
             try:
-                print(('Loading pretrained model'
+                print(('Loading pretrained model '
                        'weights from {:s}').format(self.pretrained_model))
 
                 # 从预训练模型中导入
@@ -79,6 +90,7 @@ class SolverWrapper(object):
                 raise 'Check your pretrained {:s}'.format(ckpt.model_checkpoint_path)
         last_snapshot_iter = -1
         timer = Timer()
+
         for iter in range(restore_iter, max_iters):
             timer.tic()
             # learning rate
@@ -89,17 +101,17 @@ class SolverWrapper(object):
             blobs = data_layer.forward()
 
             feed_dict = {
-                self.net.data: blobs['data'],
-                self.net.im_info: blobs['im_info'],
+                self.net.data: blobs['data'],  # 一个形状为[批数，宽，高，通道数]的源图片，命名为“data”
+                self.net.im_info: blobs['im_info'],  # 一个三维向量，包含宽，高，缩放比例
                 self.net.keep_prob: 0.5,
-                self.net.gt_boxes: blobs['gt_boxes'],
+                self.net.gt_boxes: blobs['gt_boxes'],  # GT_boxes信息，N×4矩阵，每一行为一个gt_box，分别代表x1,y1,x2,y2
             }
-            res_fetches = []
+
             fetch_list = [total_loss, model_loss, rpn_cross_entropy,
-                          rpn_loss_box, train_op] + res_fetches
+                          rpn_loss_box, train_op]
 
             total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val, \
-            summary_str, _ = sess.run(fetches=fetch_list, feed_dict=feed_dict)
+            summary_str = sess.run(fetches=fetch_list, feed_dict=feed_dict)
 
             _diff_time = timer.toc(average=False)
 
@@ -113,16 +125,16 @@ class SolverWrapper(object):
             # 郭义，到此投笔
 
 
-        #
-        #     # TODO 每一千次干什么事，这里要看！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-        #     if (iter+1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
-        #         last_snapshot_iter = iter
-        #         self.snapshot(sess, iter)
-        #
+
+            # TODO 每一千次干什么事，这里要看！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+            if (iter+1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
+                last_snapshot_iter = iter
+                self.snapshot(sess, iter)
 
 
-        # if last_snapshot_iter != iter:
-        #     self.snapshot(sess, iter)
+
+        if last_snapshot_iter != iter:
+            self.snapshot(sess, iter)
 
 
 def train_net(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore):
@@ -135,5 +147,5 @@ def train_net(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model
         sw = SolverWrapper(cfg, network, roidb, output_dir, log_dir, max_iter, pretrain_model, restore)
         print('Solving...')
 
-        sw.train_model(sess=sess,max_iters=max_iter)
+        sw.train_model(sess=sess, max_iters=max_iter)
         print('done solving')
