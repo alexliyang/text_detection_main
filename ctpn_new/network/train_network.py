@@ -4,21 +4,20 @@ from .base_network import base_network as bn
 
 class train_network(bn):
     def __init__(self, cfg):
-        # super().__init__(cfg)
-        # 数据的输入入口
-        self._cfg = cfg
-        self.data = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='data')
-        # 图像信息，包含宽，高，缩放比例
-        self.im_info = tf.placeholder(tf.float32, shape=[None, 3], name='im_info')
-        # GT_boxes信息，前四列为缩放后的四个坐标
+        super().__init__(cfg)
+        # 数据的输入入口,是一个形状为[批数，宽，高，通道数]的源图片，命名为“data”
+        self.data = tf.placeholder(tf.float32, shape=[1, None, None, 3], name='data')
+        # 图像信息，一个三维向量，包含宽，高，缩放比例
+        self.im_info = tf.placeholder(tf.float32, shape=(3,), name='im_info')
+        # GT_boxes信息，N×4矩阵，每一行为一个gt_box，分别代表x1,y1,x2,y2
         self.gt_boxes = tf.placeholder(tf.float32, shape=[None, 4], name='gt_boxes')
+        # dropout以后保留的概率
         self.keep_prob = tf.placeholder(tf.float32)
         self.setup()
 
     def setup(self):
         self.inputs = []
         self.layers = dict({'data': self.data, 'im_info': self.im_info, 'gt_boxes': self.gt_boxes})
-        anchor_scales = [16]
         _feat_stride = [16, ]
 
         # padding本来是“VALID”，我把下面的padding全部改为了“SAME”， 以充分检测
@@ -65,7 +64,7 @@ class train_network(bn):
         高的回归 = log(GT的高 / anchor的高)
         """
         (self.feed('rpn_cls_score', 'gt_boxes', 'im_info')
-             .anchor_target_layer(_feat_stride, anchor_scales, name='rpn-data'))
+             .anchor_target_layer(_feat_stride, name='rpn-data'))
 
         # shape is (1, H, W, Ax2) -> (1, H, WxA, 2)
         # 给之前得到的score进行softmax，得到0-1之间的得分

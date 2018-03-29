@@ -74,7 +74,7 @@ def main():
     img_list = os.listdir(dataset_path)
     samples = []
     print(len(img_list))
-    for img_path in img_list[:100]:
+    for img_path in img_list[:1000]:
         with open(join(dataset_path, img_path)) as f:
             lines = f.readlines()
         print(img_path)
