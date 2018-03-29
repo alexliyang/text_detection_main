@@ -19,6 +19,6 @@ def inclination(p1, p2, f = True):
     '''f = true horizon'''
     if f:
 
-        return round(abs(p2[0] - p1[0]) / abs(p2[1] - p1[1]), 1) if abs(p2[1] - p1[1]) != 0 else 0
+        return round(abs(p2[0] - p1[0]) / abs(p2[1] - p1[1]), 1) if abs(p2[1] - p1[1]) != 0 else 'inf'
     else:
-        return round(abs(p2[1] - p1[1]) / abs(p2[0] - p1[0]), 1) if abs(p2[0] - p1[0]) != 0 else 0
+        return round(abs(p2[1] - p1[1]) / abs(p2[0] - p1[0]), 1) if abs(p2[0] - p1[0]) != 0 else 'inf'

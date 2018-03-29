@@ -20,8 +20,8 @@ from PIL import Image
 
 image_dir = "./dataset/ICPR_text_train/image"  # 原始训练数据集图像目录
 txt_dir = "./dataset/ICPR_text_train/text"   # 原始训练数据集txt文本目录
-txtfortrain_dir = "./dataset/for_train/Imageinfo" # 保存每张图片对应的txt文本的目录
-imagefortain_dir = "./dataset/for_train/Imageset" # 保存图片文件的目录
+txtfortrain_dir = "./dataset/for_train/Imageinfo"  # 保存每张图片对应的txt文本的目录
+imagefortain_dir = "./dataset/for_train/Imageset"  # 保存图片文件的目录
 
 if not os.path.exists(txtfortrain_dir):
     os.makedirs(txtfortrain_dir)
@@ -37,7 +37,7 @@ def rawdata2traindata(config):
 def imagedata_process(config):
     filename = "train_set.txt"
     pathdir = "./dataset/for_train"
-   #判断train_set.txt是否存在，存在则删除
+    # 判断train_set.txt是否存在，存在则删除
     if os.path.exists(pathdir + '/' + filename):
         os.remove(pathdir + '/' + filename)
     # 创建文件train_set.txt
@@ -60,10 +60,10 @@ def imagedata_process(config):
             if height > 1200:
                 height = int(1200)
                 width = int(float(img_width) * 1200 / float(img_height))
-                txtdata_process(imagename, 1200, img_height, config)
+                txtdata_process(imagename, 1200, img_height, config, width, height)
                 scale = round(1200 / float(img_height), 2)
             else:
-                txtdata_process(imagename, 600, img_width, config)
+                txtdata_process(imagename, 600, img_width, config, width, height)
                 scale = round(600 / float(img_width), 2)
         else:
             height = int(600)
@@ -71,10 +71,10 @@ def imagedata_process(config):
             if width > 1200:
                 width = int(1200)
                 height = int(float(img_height) * 1200 / float(img_width))
-                txtdata_process(imagename, 1200, img_width, config)
+                txtdata_process(imagename, 1200, img_width, config, width, height)
                 scale = round(1200 / float(img_width), 2)
             else:
-                txtdata_process(imagename, 600, img_height, config)
+                txtdata_process(imagename, 600, img_height, config, width, height)
                 scale = round(600 / float(img_height), 2)
         trainImage = rawImage.resize((height, width), Image.ANTIALIAS) #图片缩放
         trainSize = trainImage.size  # 图片的高（行数）和宽（列数）
@@ -90,7 +90,7 @@ def imagedata_process(config):
         trainsetfile.write(image_filename + "," + str(train_width) + "," + str(train_height) + "," + str(3) + "," + str(scale)+ "\n")
     trainsetfile.close()
 
-def txtdata_process(file, numerator, denominator, config):
+def txtdata_process(file, numerator, denominator, config, width, height):
     if os.path.exists(txtfortrain_dir + '/' + file + ".txt"):
         os.remove(txtfortrain_dir + '/' + file + ".txt")
     # 创建用于训练的txt文件
@@ -111,8 +111,25 @@ def txtdata_process(file, numerator, denominator, config):
         ymin = round(min(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*float(numerator)/float(denominator), 2)
         xmax = round(max(float(tmp[0]), float(tmp[2]), float(tmp[4]), float(tmp[6]))*float(numerator)/float(denominator), 2)
         ymax = round(max(float(tmp[1]), float(tmp[3]), float(tmp[5]), float(tmp[7]))*float(numerator)/float(denominator), 2)
-        fortraintxtfile.write(str(xmin) + "," + str(ymin) + "," + str(xmax) + "," + str(ymax) + "\n")
+        if testGT(xmin, ymin, xmax, ymax, width, height):
+            fortraintxtfile.write(str(xmin) + "," + str(ymin) + "," + str(xmax) + "," + str(ymax) + "\n")
     fortraintxtfile.close()
+
+def testGT(xmin, ymin, xmax, ymax, width, height):
+    """
+    判断GT是否在图像范围内且xmin<xmax,ymin<ymax
+    """
+    if xmin < 0 or xmin > width:
+        return False
+    if xmax < 0 or xmax > width:
+        return False
+    if ymin < 0 or ymin > height:
+        return False
+    if ymax < 0 or ymax > height:
+        return False
+    if xmin >= xmax or ymin >= ymax:
+        return False
+    return True
 
 import sys
 sys.path.append(os.getcwd())
