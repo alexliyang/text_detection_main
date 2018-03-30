@@ -12,7 +12,7 @@ from ctpn.test_net import TestClass
 if __name__ == "__main__":
     #加载配置文件
     cfg = load_config();
-    pprint.pprint(cfg)
+    #pprint.pprint(cfg)
 
     #获取测试网络
     network = get_test_network(cfg)
