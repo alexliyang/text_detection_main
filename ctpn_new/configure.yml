@@ -29,4 +29,6 @@ TRAIN:
   MAX_ITER: 50000
   SNAPSHOT_ITERS: 1000
 TEST:
-
+  DATA_DIR: dataset\\for_test
+  RESULT_DIR: data\\results
+  SCALES: 600
