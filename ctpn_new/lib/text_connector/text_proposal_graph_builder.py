@@ -1,4 +1,3 @@
-from .text_connect_cfg import Config as TextLineCfg
 from .other import Graph
 import numpy as np
 
@@ -7,10 +6,14 @@ class TextProposalGraphBuilder:
     """
         Build Text proposals into a graph.
     """
+    def __init__(self,cfg):
+        self._cfg = cfg;
+
+
     def get_successions(self, index):
             box=self.text_proposals[index]
             results=[]
-            for left in range(int(box[0])+1, min(int(box[0])+TextLineCfg.MAX_HORIZONTAL_GAP+1, self.im_size[1])):
+            for left in range(int(box[0])+1, min(int(box[0])+self._cfg.MAX_HORIZONTAL_GAP+1, self.im_size[1])):
                 adj_box_indices=self.boxes_table[left]
                 for adj_box_index in adj_box_indices:
                     if self.meet_v_iou(adj_box_index, index):
@@ -22,7 +25,7 @@ class TextProposalGraphBuilder:
     def get_precursors(self, index):
         box=self.text_proposals[index]
         results=[]
-        for left in range(int(box[0])-1, max(int(box[0]-TextLineCfg.MAX_HORIZONTAL_GAP), 0)-1, -1):
+        for left in range(int(box[0])-1, max(int(box[0]-self._cfg.MAX_HORIZONTAL_GAP), 0)-1, -1):
             adj_box_indices=self.boxes_table[left]
             for adj_box_index in adj_box_indices:
                 if self.meet_v_iou(adj_box_index, index):
@@ -50,8 +53,8 @@ class TextProposalGraphBuilder:
             h2=self.heights[index2]
             return min(h1, h2)/max(h1, h2)
 
-        return overlaps_v(index1, index2)>=TextLineCfg.MIN_V_OVERLAPS and \
-               size_similarity(index1, index2)>=TextLineCfg.MIN_SIZE_SIM
+        return overlaps_v(index1, index2)>=self._cfg.MIN_V_OVERLAPS and \
+               size_similarity(index1, index2)>=self._cfg.MIN_SIZE_SIM
 
     def build_graph(self, text_proposals, scores, im_size):
         self.text_proposals=text_proposals

@@ -1,25 +1,23 @@
 #coding:utf-8
 import numpy as np
-from lib.fast_rcnn.nms_wrapper import nms
-from lib.fast_rcnn.config import cfg
+from lib.nms_wrapper import nms
 from .text_proposal_connector import TextProposalConnector
 from .text_proposal_connector_oriented import TextProposalConnector as TextProposalConnectorOriented
-from .text_connect_cfg import Config as TextLineCfg
-
 
 class TextDetector:
-    def __init__(self):
+    def __init__(self,cfg):
+        self._cfg = cfg
         #测试模式选择
         self.mode= cfg.TEST.DETECT_MODE
         if self.mode == "H":
-            self.text_proposal_connector=TextProposalConnector()
+            self.text_proposal_connector=TextProposalConnector(cfg)
         elif self.mode == "O":
-            self.text_proposal_connector=TextProposalConnectorOriented()
+            self.text_proposal_connector=TextProposalConnectorOriented(cfg)
 
         
     def detect(self, text_proposals,scores,size):
         # 删除得分较低（小于0.7）的proposal
-        keep_inds=np.where(scores>TextLineCfg.TEXT_PROPOSALS_MIN_SCORE)[0]
+        keep_inds=np.where(scores>self._cfg.TEXT_PROPOSALS_MIN_SCORE)[0]
         text_proposals, scores=text_proposals[keep_inds], scores[keep_inds]
 
         # 按得分排序
@@ -27,7 +25,7 @@ class TextDetector:
         text_proposals, scores=text_proposals[sorted_indices], scores[sorted_indices]
 
         # 对proposal做nms
-        keep_inds=nms(np.hstack((text_proposals, scores)), TextLineCfg.TEXT_PROPOSALS_NMS_THRESH)
+        keep_inds=nms(np.hstack((text_proposals, scores)), self._cfg.TEXT_PROPOSALS_NMS_THRESH)
         text_proposals, scores=text_proposals[keep_inds], scores[keep_inds]
 
         # 获取检测结果
@@ -46,5 +44,5 @@ class TextDetector:
             scores[index] = box[8]
             index += 1
 
-        return np.where((widths/heights>TextLineCfg.MIN_RATIO) & (scores>TextLineCfg.LINE_MIN_SCORE) &
-                          (widths>(TextLineCfg.TEXT_PROPOSALS_WIDTH*TextLineCfg.MIN_NUM_PROPOSALS)))[0]
+        return np.where((widths/heights>self._cfg.MIN_RATIO) & (scores>self._cfg.LINE_MIN_SCORE) &
+                          (widths>(self._cfg.TEXT_PROPOSALS_WIDTH*self._cfg.MIN_NUM_PROPOSALS)))[0]

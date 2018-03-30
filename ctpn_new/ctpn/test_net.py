@@ -7,7 +7,6 @@ import os, cv2
 from lib.timer import Timer
 from lib.utils.test_util import test_util
 from lib.text_connector.detectors import TextDetector
-from lib.text_connector.text_connect_cfg import Config as TextLineCfg
 
 class TestClass(object):
     def __init__(self,cfg,network):
@@ -57,7 +56,7 @@ class TestClass(object):
 
         img = cv2.imread(image_name)
         #resize_im的传入参数根据配置文件
-        img, scale = self.resize_im(img, scale=TextLineCfg.SCALE, max_scale=TextLineCfg.MAX_SCALE)
+        img, scale = self.resize_im(img, scale=self._cfg.SCALE, max_scale=self._cfg.MAX_SCALE)
         scores, boxes = self.tu.test_ctpn(sess, net, img)
 
         #此处调用了一个文本检测器，未实现
@@ -84,8 +83,7 @@ class TestClass(object):
 
         #恢复模型参数
         try:
-            #ckpt = tf.train.get_checkpoint_state(self._cfg.COMMON.CHKPT)
-            ckpt = tf.train.get_checkpoint_state("checkpoints\checkpoint")
+            ckpt = tf.train.get_checkpoint_state(self._cfg.COMMON.CHKPT)
             print('Restoring from {}...'.format(ckpt.model_checkpoint_path), end=' ')
             saver.restore(sess, ckpt.model_checkpoint_path)
             print('done')

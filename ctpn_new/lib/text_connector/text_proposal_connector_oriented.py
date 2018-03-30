@@ -7,8 +7,8 @@ class TextProposalConnector:
     """
         Connect text proposals into text lines
     """
-    def __init__(self):
-        self.graph_builder=TextProposalGraphBuilder()
+    def __init__(self,cfg):
+        self.graph_builder=TextProposalGraphBuilder(cfg)
 
     def group_text_proposals(self, text_proposals, scores, im_size):
         graph=self.graph_builder.build_graph(text_proposals, scores, im_size)
