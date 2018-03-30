@@ -11,6 +11,7 @@ cfg = load_config()
 def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
 
     # 生成基本的anchor,一共10个,返回一个10行4列矩阵，每行为一个anchor，返回的只是基于中心的相对坐标
+    # 这里返回的4个值是对应的某个anchor的xmin, xmax, ymin, ymax
     _anchors = generate_anchors()
     _num_anchors = _anchors.shape[0]  # 10个anchor
 
@@ -23,6 +24,8 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     height, width = rpn_cls_score.shape[1:3]  # feature-map的高宽
 
     # ==================================================================================
+    # generate_anchors生成的是相对坐标，由于划窗之后的特征图上的一个像素点对应原图片中的16 * 16的区域，
+    # 因此需要计算出每个anchor在图像中的真实位置，shift_x shift_y 对应于每个像素点的偏移量，
     shift_x = np.arange(0, width) * _feat_stride  # 返回一个列表，[0, 16, 32, 48, ...]
     shift_y = np.arange(0, height) * _feat_stride
 
@@ -44,10 +47,13 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
 
     # 前者的shape为(1, 10, 4), 后者的shape为(像素数, 1, 4)两者相加
     # 结果为(像素数, 10, 4) python数组广播相加。。。。。。。有待理解
+    # all_anchors的维度 k * 10 * 4
+    # 用每个像素点所对应的anchor四条边的的相对坐标加偏移量，得到anchor box具体的值
     all_anchors = (_anchors.reshape((1, A, cfg.TRAIN.COORDINATE_NUM)) +
                    shifts.reshape((1, K, cfg.TRAIN.COORDINATE_NUM)).transpose((1, 0, 2)))
 
     # 至此，每一行为一个anchor， 每十行为一个滑动窗对应的十个anchor，第二个十行为往右走所对应的十个anchors
+    # 每十行为一个k的anchor
     all_anchors = all_anchors.reshape((K * A, cfg.TRAIN.COORDINATE_NUM))
     total_anchors = int(K * A)
 
@@ -67,6 +73,8 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     # ===============================================================================
     # label: 1 is positive, 0 is negative, -1 is dont care
     # (A)
+
+    # 将有用的label 筛选出来
     labels = np.empty((total_valid_anchors, ), dtype=np.int8)
     labels.fill(-1)  # 初始化label，均为-1
 
@@ -144,6 +152,7 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     # 根据anchor和gtbox计算得真值（anchor和gtbox之间的偏差）
     # 输入是所有的anchors，以及与之IOU最大的那个GT，返回是一个N×2的矩阵，每行表示一个anchor与对应的IOU最大的GT的y,h回归
     """返回值里面，只有正例的回归是有效值"""
+    # 现在 每个有效的anchor都有了自己需要回归的真值
     bbox_targets = _compute_targets(anchors, labels, gt_boxes[argmax_overlaps, :])
 
     # 一开始是将超出图像范围的anchor直接丢掉的，现在在加回来， 加回来的的标签全部置为-1
@@ -151,10 +160,12 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     labels = _unmap(labels, total_anchors, inds_inside, fill=-1)  # 这些anchor的label是-1，也即dontcare
     bbox_targets = _unmap(bbox_targets, total_anchors, inds_inside, fill=0)  # 这些anchor的真值是0，也即没有值
 
+    # feature map上对应的每个像素点都有自己label, 文本为1 不是文本0 不关心区域为 -1
     labels = labels.reshape((1, height, width, A))  # reshape一下label
     rpn_labels = labels
 
     # bbox_targets
+    # 对于label是1的标签，我们关心其回归的delta_y delta_h,label是0 和 -1的，我们不关心
     bbox_targets = bbox_targets.reshape((1, height, width, A * 2))  # reshape
 
     rpn_bbox_targets = bbox_targets
@@ -216,14 +227,18 @@ def bbox_transform(ex_rois, label, gt_rois):
     gt_ctr_y[inds_positive] = gt_rois[inds_positive, 1] + 0.5 * gt_heights[inds_positive]
 
     """
-    对于ctopn文本检测，只需要回归y和高度坐标即可
+    对于ctpn文本检测，只需要回归y和高度坐标即可
     """
     targets_dy = np.empty(shape=(length,), dtype=np.float32)
+    # 这里的传进来的为是正例和负例一起的anchors，将是正例的部分赋值
     targets_dy[inds_positive] = (gt_ctr_y[inds_positive] - ex_ctr_y[inds_positive]) / ex_heights[inds_positive]
 
     targets_dh = np.empty(shape=(length,), dtype=np.float32)
     targets_dh[inds_positive] = np.log(gt_heights[inds_positive] / ex_heights[inds_positive])
 
+
+    # 对于每个正例来说需要回归两个delta
+    # 返回的target为一个 正例个 * 2 的矩阵 两列分别为正例的delta_y delta_h
     targets = np.vstack(
         (targets_dy, targets_dh)).transpose()
     return targets

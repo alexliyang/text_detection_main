@@ -190,7 +190,10 @@ class base_network(object):
             rpn_bbox_targets 是(1, FM的高，FM的宽，20), 最后一个维度中，每四个表示一个anchor的回归 y,h
 
             """
+            # rpn_labels：(1, height, width, 10) height width为feature map对应的宽 高，一个像素只有一个标签
+            # rpn_bbox_targets (1, height, width, 20) 标签为1的标签后回归目标
             rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer_py,
+                                                      # input 分别对应 rpn_cls_score gt_boxes im_info
                                                       [input[0], input[1], input[2], _feat_stride],
                                                       [tf.float32, tf.float32])
 

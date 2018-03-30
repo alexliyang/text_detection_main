@@ -44,15 +44,17 @@ class train_network(bn):
         (self.feed('conv5_3')
              .conv(3, 3, 512, 1, 1, name='rpn_conv/3x3'))
         # 将得到3×3×512的特征向量提取10个anchor并做双向LSTM中
+        # 直接将划窗后的每个像素值送入到lstm中，由lstm提取出前后像素之间的联系
         (self.feed('rpn_conv/3x3').bilstm(512, 128, 512, name='lstm_o'))  # 这里的512必须与最后一个卷积层的512匹配
         # Bilstm的输出为[N, H, W, 512]形状
+        # 经过lstm后，每个像素值将产生512维的向量，这些向量将被产生预测值
 
         # 往两个方向走，一个用于给类别打分，一个用于盒子回归
         # 用于盒子回归的，输入是10个anchor，每个anchor有有2个回归，即y和高度,形状是[1, H, W, 20],
         # ===============“注意，网络输出的不是预测的盒子的四个坐标，而是y和高度的回归！！！！”========
         (self.feed('lstm_o').lstm_fc(512, 10 * 2, name='rpn_bbox_pred'))
 
-        # 用于盒子分类的，输出是[1, H, W, 20]
+        # 用于盒子分类的，输出是[1, H, W, 20],
         (self.feed('lstm_o').lstm_fc(512, 10 * 2, name='rpn_cls_score'))
 
         """
@@ -63,6 +65,9 @@ class train_network(bn):
         y的回归 = （GT的y-anchor的y）/anchor的高
         高的回归 = log(GT的高 / anchor的高)
         """
+        # 将rpn_cls_score gt_boxes im_info 装入缓存
+        # 经过这步之后，rpn_labels, rpn_bbox_targets将被得出，被存到self.layers['rpn-data']中，将在build loss阶段被取出加入到损失函数中
+        # rpn_labels将被用来和预测值进行比较，具体为下一步softmax得出的rpn_cls_score_reshape
         (self.feed('rpn_cls_score', 'gt_boxes', 'im_info')
              .anchor_target_layer(_feat_stride, name='rpn-data'))
 
