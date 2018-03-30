@@ -13,6 +13,7 @@ class SolverWrapper(object):
         self.output_dir = output_dir
         self.pretrained_model = pretrain_model
         self.checkpoints_dir = checkpoints_dir
+        self.last_iter = 0
 
         # For checkpoint
         self.saver = tf.train.Saver(max_to_keep=100, write_version=tf.train.SaverDef.V2)
@@ -121,13 +122,11 @@ class SolverWrapper(object):
                                                       rpn_loss_cls_val, rpn_loss_box_val, lr.eval()))
                 print('speed: {:.3f}s / iter'.format(_diff_time))
 
-            # =====================================================================================================
-            # 郭义，到此投笔
-
+            self.snapshot(sess, iter)
             # 每1000次保存一次模型
             if (iter + 1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千差一次
                 last_snapshot_iter = iter
-                self.snapshot(sess, iter)
+
 
 
 def train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
