@@ -6,4 +6,5 @@ ctpn_new/**/__pycache__/*.pyc
 ctpn_new/analysis/tmp/*
 ctpn_new/analysis/.ipynb_checkpoints/*
 ctpn_new/analysis/features.pkl
-checkpoints/*
+ctpn_new/checkpoints/*
+
