@@ -4,7 +4,7 @@ import numpy as np
 import shutil
 import glob
 import os, cv2
-from ctpn.timer import Timer
+from lib.timer import Timer
 from lib.utils.test_util import test_util
 from lib.text_connector.detectors import TextDetector
 from lib.text_connector.text_connect_cfg import Config as TextLineCfg
