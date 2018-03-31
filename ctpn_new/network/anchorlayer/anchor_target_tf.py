@@ -126,9 +126,6 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
         disable_inds = npr.choice(
             fg_inds, size=(len(fg_inds) - num_fg), replace=False)  # 随机去除掉一些正样本
         labels[disable_inds] = -1  # 变为-1
-    else:
-        print("warning: The number of positive anchors is {}".format(len(fg_inds)))
-        print("maybe you should adjust the value of cfg.TRAIN.RPN_FG_FRACTION")
 
     # subsample negative labels if we have too many
     # 对负样本进行采样，如果负样本的数量太多的话
@@ -144,9 +141,6 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
         disable_inds = npr.choice(
             bg_inds, size=(len(bg_inds) - num_bg), replace=False)
         labels[disable_inds] = -1
-    else:
-        print("Warning: The number of negtive anchors is {}".format(len(bg_inds)))
-        print("maybe you should adjust the value of cfg.TRAIN.RPN_BATCHSIZE")
     # 至此， 上好标签，开始计算rpn-box的真值
     # --------------------------------------------------------------
     # 根据anchor和gtbox计算得真值（anchor和gtbox之间的偏差）

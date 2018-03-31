@@ -249,6 +249,7 @@ class base_network(object):
         # 交叉熵损失
         rpn_cross_entropy_n = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=rpn_label, logits=rpn_cls_score)
 
+        # 預測的盒子回歸
         rpn_bbox_pred = self.get_output('rpn_bbox_pred')  # shape [1, H, W, 20]
 
         # rpn_bbox_targets 是(1, FM的高，FM的宽，20) 最后一个维度中，每四个表示一个anchor的回归 y,h
