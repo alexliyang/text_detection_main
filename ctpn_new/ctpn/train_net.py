@@ -137,6 +137,8 @@ class SolverWrapper(object):
             # 每1000次保存一次模型
             if (iter + 1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千次保存一下ckeckpoints
                 self.snapshot(sess, iter)
+        # for循環結束以後，記錄下最後一次
+        self.snapshot(sess, self.max_iter)
 
 
 def train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
