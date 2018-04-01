@@ -1,5 +1,5 @@
-#coding:utf-8
-#在这个文件里调用test_net.py中的test_net
+# coding:utf-8
+# 在这个文件里调用test_net.py中的test_net
 import sys
 import os
 sys.path.append(os.getcwd())
@@ -10,15 +10,15 @@ from ctpn.test_net import TestClass
 
 
 if __name__ == "__main__":
-    #加载配置文件
-    cfg = load_config();
+    # 加载配置文件
+    cfg = load_config()
     pprint.pprint(cfg)
 
-    #获取测试网络
+    # 获取测试网络
     network = get_test_network(cfg)
 
-    #获取测试类实例
-    testclass = TestClass(cfg,network)
-    #开始测试
-    testclass.test_net();
+    # 获取测试类实例
+    testclass = TestClass(cfg, network)
+    # 开始测试
+    testclass.test_net()
 
