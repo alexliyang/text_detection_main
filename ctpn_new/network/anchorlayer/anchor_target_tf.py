@@ -4,7 +4,7 @@ import numpy.random as npr
 from .generate_anchors import generate_anchors
 from .iou import bbox_overlaps
 from lib import load_config
-from exceptions.myException import NoPositiveError
+from exceptions import NoPositiveError
 cfg = load_config()
 
 
@@ -57,6 +57,7 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     all_anchors = all_anchors.reshape((K * A, cfg.TRAIN.COORDINATE_NUM))
     total_anchors = int(K * A)
 
+
     # 仅保留那些还在图像内部的anchor
     inds_inside = np.where(
         (all_anchors[:, 0] >= -_allowed_border) &
@@ -68,6 +69,8 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     assert total_valid_anchors > 0, "The number of total valid anchor must be lager than zero"
     # 经过验证，这里的anchors的宽度全部是16
     anchors = all_anchors[inds_inside, :]  # 保留那些在图像内的anchor
+
+
 
     # 至此，anchor准备好了
     # ===============================================================================
@@ -82,6 +85,8 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     overlaps = bbox_overlaps(
         np.ascontiguousarray(anchors, dtype=np.float),
         np.ascontiguousarray(gt_boxes, dtype=np.float))  # 假设anchors有x个，gt_boxes有y个，返回的是一个（x,y）的数组
+
+
     assert overlaps.shape[0] == total_valid_anchors, "Fatal Error: in the file {}".format(__file__)
     assert overlaps.shape[1] == gt_boxes.shape[0], "Fatal Error: in the file {}".format(__file__)
     # argmax_overlaps[0]表示第0号anchor与所有GT的IOU最大值的脚标
@@ -93,6 +98,7 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0
     # cfg.TRAIN.RPN_POSITIVE_OVERLAP = 0.8
     labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1  # overlap大于0.8的认为是前景
+
 
     # TODO 限制正样本的数量不超过150个
     # TODO 这个后期可能还需要修改，毕竟如果使用的是字符的片段，那个正样本的数量是很多的。
