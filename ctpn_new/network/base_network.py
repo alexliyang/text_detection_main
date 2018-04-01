@@ -83,7 +83,7 @@ class base_network(object):
             # 相当于 tf.Variable() 这里cfg.TRAIN.WEIGHT_DECAY = 0.0005
 
             kernel = tf.get_variable(name='weights', shape=[k_h, k_w, c_i, c_o], initializer=init_weights,
-                                     trainable=trainable, regularizer=self.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
+                                     trainable=trainable, regularizer=base_network.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
 
             if biased:
                 biases = tf.get_variable(name='biases', shape=[c_o], initializer=init_biases, trainable=trainable)
@@ -99,7 +99,7 @@ class base_network(object):
                 return conv
 
     @staticmethod
-    def l2_regularizer(self, weight_decay=0.0005, scope=None):
+    def l2_regularizer(weight_decay=0.0005, scope=None):
         def regularizer(tensor):
             with tf.name_scope(scope, default_name='l2_regularizer', values=[tensor]):
                 l2_weight = tf.convert_to_tensor(weight_decay, dtype=tensor.dtype.base_dtype, name='weight_decay')
@@ -146,7 +146,7 @@ class base_network(object):
             # 初始化权重，权重是需要正则化的
             weights = tf.get_variable(name='weights', shape=[2 * d_h, d_o], initializer=init_weights,
                                       trainable=trainable,
-                                      regularizer=self.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
+                                      regularizer=base_network.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
             # 偏执不需要正则化
             biases = tf.get_variable(name='biases', shape=[d_o], initializer=init_biases, trainable=trainable)
 
@@ -166,7 +166,7 @@ class base_network(object):
             init_biases = tf.constant_initializer(0.0)
 
             weights = tf.get_variable(name='weights', shape=[d_i, d_o], initializer=init_weights,
-                                      trainable=trainable, regularizer=self.l2_regularizer(
+                                      trainable=trainable, regularizer=base_network.l2_regularizer(
                     self._cfg.TRAIN.WEIGHT_DECAY))
             # 偏置不需要正则化
             biases = tf.get_variable(name='biases', shape=[d_o], initializer=init_biases, trainable=trainable)
@@ -218,6 +218,8 @@ class base_network(object):
             # input[0] shape is (1, H, W, Ax2)
             # rpn_rois <- (1 x H x W x A, 5) [0, x1, y1, x2, y2]
         with tf.variable_scope(name):
+            # blob返回一個多行5列矩陣，第一列为分数，后四列为盒子坐标
+            # bbox_deltas爲多行两列矩陣，每行爲一個回歸值
             blob, bbox_delta = tf.py_func(proposal_layer_py,
                                           [input[0], input[1], input[2], _feat_stride],
                                           [tf.float32, tf.float32])
@@ -324,24 +326,4 @@ class base_network(object):
         # d = input.get_shape()[-1]
         return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
                           [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)
-
-    # @ staticmethod # 这里不要写成静态方法
-    def load(self, data_path, session, ignore_missing=False):
-
-        # data_dict是一个字典， 键为“conv5_1”, "conv3_2"等等
-        # 而该字典的值又是字典，键为”biases"和"weights"
-        data_dict = np.load(data_path, encoding='latin1').item()
-        for key in data_dict.keys():
-
-            # key 是“conv5_1”, "conv3_2"等等
-            with tf.variable_scope(key, reuse=True):
-                for subkey in data_dict[key]:
-                    try:
-                        var = tf.get_variable(subkey)
-                        session.run(var.assign(data_dict[key][subkey]))
-                        print("assign pretrain model "+subkey+ " to "+key)
-                    except ValueError:
-                        print("ignore "+key)
-                        if not ignore_missing:
-                            raise
 

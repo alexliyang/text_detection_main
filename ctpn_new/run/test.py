@@ -14,7 +14,7 @@ if __name__ == "__main__":
     cfg = load_config()
     pprint.pprint(cfg)
 
-    # 获取测试网络
+    # 获取测试网络， 一个空网络
     network = get_test_network(cfg)
 
     # 获取测试类实例

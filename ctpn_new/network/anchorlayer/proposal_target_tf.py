@@ -101,7 +101,7 @@ def proposal_layer(rpn_cls_prob_reshape, rpn_bbox_pred, im_info, _feat_stride=(1
     # batch inds are 0
     blob = np.hstack((scores.astype(np.float32, copy=False), proposals.astype(np.float32, copy=False)))
     # blob返回一個多行5列矩陣，第一行爲分數，後四行爲盒子坐標
-    # bbox_deltas爲多行四列矩陣，每行爲一個回歸值
+    # bbox_deltas爲多行两列矩陣，每行爲一個回歸值
     return blob, bbox_deltas
 
 

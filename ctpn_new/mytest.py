@@ -1,9 +1,6 @@
-import numpy as np
-a = np.array([[1,2,3],[4,5,6]])
-b = np.array([0,0])
-a[:,0] = b
-print(a)
-
-a = np.array([1,2,3])
-b = np.array([2,2,2])
-print(a*b)
+import cv2
+img = cv2.imread("yi.jpg")
+cv2.imshow("guoyi", img)
+imgScale = cv2.resize(img,None,None,fx=0.5,fy=0.5)
+cv2.imshow("g",imgScale)
+cv2.waitKey(0)

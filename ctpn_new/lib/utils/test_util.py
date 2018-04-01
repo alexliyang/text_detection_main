@@ -2,10 +2,12 @@ import numpy as np
 import cv2
 from ..utils.blob import im_list_to_blob
 
+
 class test_util(object):
-    def __init__(self,cfg):
-        self._cfg = cfg;
-    def _get_image_blob(self,im):
+    def __init__(self, cfg):
+        self._cfg = cfg
+
+    def _get_image_blob(self, im):
         im_orig = im.astype(np.float32, copy=True)
         im_orig -= self._cfg.TRAIN.PIXEL_MEANS
 
@@ -31,12 +33,10 @@ class test_util(object):
 
         return blob, np.array(im_scale_factors)
 
-
     def _get_blobs(self,im, rois):
         blobs = {'data' : None, 'rois' : None}
         blobs['data'], im_scale_factors = self._get_image_blob(im)
         return blobs, im_scale_factors
-
 
     def test_ctpn(self,sess, net, im, boxes=None):
         blobs, im_scales = self._get_blobs(im, boxes)
@@ -50,7 +50,7 @@ class test_util(object):
             feed_dict = {net.data: blobs['data'], net.im_info: blobs['im_info'], net.keep_prob: 1.0}
 
         rois = sess.run([net.get_output('rois')[0]],feed_dict=feed_dict)
-        rois=rois[0]
+        rois = rois[0]
 
         scores = rois[:, 0]
         if self._cfg.TEST.HAS_RPN:

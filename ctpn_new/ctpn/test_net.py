@@ -3,17 +3,18 @@ import tensorflow as tf
 import numpy as np
 import shutil
 import glob
-import os, cv2
+import os
+import cv2
 from lib.timer import Timer
 from lib.utils.test_util import test_util
 from lib.text_connector.detectors import TextDetector
 
+
 class TestClass(object):
-    def __init__(self,cfg,network):
+    def __init__(self, cfg, network):
         self._cfg = cfg
         self._net = network
         self.tu = test_util(cfg)
-        #self.setup()
 
      # 画方框,被ctpn()调用
     def draw_boxes(self,img, image_name, boxes, scale):
@@ -42,24 +43,33 @@ class TestClass(object):
         img = cv2.resize(img, None, None, fx=1.0 / scale, fy=1.0 / scale, interpolation=cv2.INTER_LINEAR)
         cv2.imwrite(os.path.join(self._cfg.TEST.RESULT_DIR, base_name), img)
 
-    #改变图片的尺寸，被ctpn()调用
-    def resize_im(self,im, scale, max_scale=None):
-        f = float(scale) / min(im.shape[0], im.shape[1])
+    # 改变图片的尺寸，被ctpn()调用
+    @ staticmethod
+    def resize_im(im, scale, max_scale=None):
+        # 缩放比定义为原图/修改后的图
+        f = min(im.shape[0], im.shape[1])/float(scale)
         if max_scale != None and f * max(im.shape[0], im.shape[1]) > max_scale:
             f = float(max_scale) / max(im.shape[0], im.shape[1])
         return cv2.resize(im, None, None, fx=f, fy=f, interpolation=cv2.INTER_LINEAR), f
 
-    #被test_net()调用
-    def ctpn(self,sess, net, image_name):
+    # 被test_net()调用
+    def ctpn(self, sess, net, image_name):
+        """
+        :param sess: 会话
+        :param net: 创建的测试网络
+        :param image_name: 所要测试的图片的目录
+        :return:
+        """
         timer = Timer()
         timer.tic()
 
+        # 读取图片
         img = cv2.imread(image_name)
-        #resize_im的传入参数根据配置文件
-        img, scale = self.resize_im(img, scale=self._cfg.SCALE, max_scale=self._cfg.MAX_SCALE)
+        # resize_im的传入参数根据配置文件
+        img, scale = TestClass.resize_im(img, scale=self._cfg.TEST.SCALE, max_scale=self._cfg.TEST.MAX_SCALE)
         scores, boxes = self.tu.test_ctpn(sess, net, img)
 
-        #此处调用了一个文本检测器，未实现
+        # 此处调用了一个文本检测器，未实现
         textdetector = TextDetector()
         boxes = textdetector.detect(boxes, scores[:, np.newaxis], img.shape[:2])
         self.draw_boxes(img, image_name, boxes, scale)
@@ -68,14 +78,16 @@ class TestClass(object):
                '{:d} object proposals').format(timer.total_time, boxes.shape[0]))
 
     def test_net(self):
-        #定义结果输出的路径(trd 是test_result_dir缩写 )
-        trd= self._cfg.TEST.RESULT_DIR
+        # 定义结果输出的路径(trd 是test_result_dir缩写 )
+        trd = self._cfg.TEST.RESULT_DIR
         if os.path.exists(trd):
             shutil.rmtree(trd)
         os.makedirs(trd)
 
-        #创建一个Session
+        # 创建一个Session
         config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allocator_type = 'BFC'
+        config.gpu_options.per_process_gpu_memory_fraction = 0.9
         sess = tf.Session(config=config)
 
         #获取一个Saver()实例
@@ -90,7 +102,7 @@ class TestClass(object):
         except:
             raise 'Check your pretrained {:s}'.format(ckpt.model_checkpoint_path)
 
-        #加载图片
+        # TODO 这里需要仔细测试一下
         im_names = glob.glob(os.path.join(self._cfg.TEST.DATA_DIR, 'for_test', '*.png')) + \
                    glob.glob(os.path.join(self._cfg.TEST.DATA_DIR, 'for_test', '*.jpg'))
 
@@ -98,4 +110,6 @@ class TestClass(object):
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print(('Testing for image {:s}'.format(im_name)))
             self.ctpn(sess, self._net, im_name)
+        # 最后关闭session
+        sess.close()
 
