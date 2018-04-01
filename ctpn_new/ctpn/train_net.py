@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 from lib import Timer
 from input_layer import get_data_layer
-from exceptions.myException import NoPositiveError
+from exceptions import NoPositiveError
 
 
 class SolverWrapper(object):
@@ -121,6 +121,7 @@ class SolverWrapper(object):
             except NoPositiveError:
                 print("warning: abandon a picture named {}".format(blobs['im_name']))
                 continue
+
 
             _diff_time = timer.toc(average=False)
 
