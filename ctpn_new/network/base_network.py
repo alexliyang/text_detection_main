@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from .anchorlayer.anchor_target_tf import anchor_target_layer_py
-
+from .anchorlayer.proposal_target_tf import proposal_layer as proposal_layer_py
 
 DEFAULT_PADDING = "SAME"
 
@@ -204,6 +204,35 @@ class base_network(object):
             return rpn_labels, rpn_bbox_targets
 
     @layer
+    def proposal_layer(self, input, _feat_stride,  name):
+        # input 是一个包含三个元素的列表，包含一下三个元素值
+        """
+        'rpn_cls_prob_reshape': softmax以后的概率值，形状为(1, H, W, Ax2)
+        'rpn_bbox_pred': 回归，即y和高度,形状是[1, H, W, 20],
+        'im_info': 图片信息，一个三维向量，包含高，宽，缩放比例
+        """
+        # _feat_stride = [16,]
+        assert len(input) == 3
+        if isinstance(input[0], tuple):
+            input[0] = input[0][0]
+            # input[0] shape is (1, H, W, Ax2)
+            # rpn_rois <- (1 x H x W x A, 5) [0, x1, y1, x2, y2]
+        with tf.variable_scope(name):
+            blob, bbox_delta = tf.py_func(proposal_layer_py,
+                                          [input[0], input[1], input[2], _feat_stride],
+                                          [tf.float32, tf.float32])
+
+            rpn_rois = tf.convert_to_tensor(tf.reshape(blob, [-1, 5]), name='rpn_rois')  # shape is (1 x H x W x A, 2)
+            rpn_targets = tf.convert_to_tensor(bbox_delta, name='rpn_targets')  # shape is (1 x H x W x A, 4)
+            self.layers['rpn_rois'] = rpn_rois
+            self.layers['rpn_targets'] = rpn_targets
+
+            return rpn_rois, rpn_targets
+
+
+
+
+    @layer
     def spatial_reshape_layer(self, input, d, name):
         input_shape = tf.shape(input)
         # transpose: (1, H, W, A x d) -> (1, H, WxA, d)
@@ -315,3 +344,4 @@ class base_network(object):
                         print("ignore "+key)
                         if not ignore_missing:
                             raise
+

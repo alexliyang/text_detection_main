@@ -99,29 +99,6 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     # cfg.TRAIN.RPN_POSITIVE_OVERLAP = 0.8
     labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1  # overlap大于0.8的认为是前景
 
-    '''side refinement'''
-    # TODO 对于中心点在gt box左右边距小于50px范围的anchor, 将计算出它们的side refinement 回归需要的o值
-    anchor_side_refinement =np.empty((total_valid_anchors, 2), dtype=np.int8)
-
-    #
-    # # gt_argmax_overlaps[0]表示所有anchor中与第0号GT的IOU最大的那个anchor的索引
-    # gt_argmax_overlaps = overlaps.argmax(axis=0)
-    #
-    # # 返回一个一维数组，第i号元素的值表示第i个GT与所有anchor的IOU最大的那个值
-    # gt_max_overlaps = overlaps[gt_argmax_overlaps,
-    #                            np.arange(overlaps.shape[1])]
-    #
-    # #  这里[2, 2, 4, 5]表示2号anchor与所有的GT有两个最大值， 4号anchor与所有的GT有一个最大值
-    # #  这里的最大值，是指定一个GT后，与所有anchor的最大值
-    # # TODO 这里不知为何，对浮点数用==应该来说是不行的
-    # gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
-    #
-    #
-    #
-    # # 由于所有的anchors是穷举扫描，覆盖了全部的图片，对于某个GT，与其有最大的IOU的一定是文字
-    # labels[gt_argmax_overlaps] = 1
-
-
 
     # TODO 限制正样本的数量不超过150个
     # TODO 这个后期可能还需要修改，毕竟如果使用的是字符的片段，那个正样本的数量是很多的。
@@ -238,7 +215,6 @@ def bbox_transform(ex_rois, label, gt_rois):
 
     targets_dh = np.empty(shape=(length,), dtype=np.float32)
     targets_dh[inds_positive] = np.log(gt_heights[inds_positive] / ex_heights[inds_positive])
-
 
     # 对于每个正例来说需要回归两个delta
     # 返回的target为一个 正例个 * 2 的矩阵 两列分别为正例的delta_y delta_h

@@ -55,18 +55,19 @@ class roidb(object):
 
         assert os.path.exists(image_set_file), 'Path does not exist: {}'.format(image_set_file)
         image_index = []  # 该列表存放图片名
-        image_info = []  # 一个列表，列表的长度是图片的张数，列表的每个元素是一个四维向量，存放宽，高，channal，缩放比
+        image_info = []  # 一个列表，列表的长度是图片的张数，列表的每个元素是一个四维向量，存放高，宽，channal，缩放比
         with open(image_set_file) as f:
             lines = f.readlines()
         for line in lines:
             line = line.strip().split(',')
             image_index.append(line[0])  # 图片名
+            # TODO 这里必须是高在前，宽在后
             im_info = list(map(float, line[1:]))
             im_info[2] = int(im_info[2])
             image_info.append(im_info)
         # 一个列表，列表的长度是图片的张数，列表的每个元素是一个字符串，存放图片的名字
         self._image_index = image_index
-        # 一个列表，列表的长度是图片的张数，列表的每个元素是一个四维向量，存放宽，高，channal，缩放比
+        # 一个列表，列表的长度是图片的张数，列表的每个元素是一个四维向量，存放高，宽，channal，缩放比
         self._image_info = image_info
 
     def _gt_roidb(self):

@@ -46,7 +46,7 @@ def _get_image_blob(roidb, scale_inds, cfg):
                     dtype=np.float32)
 
     blob[0, :, :, :] = im
-    # blob是一张图片，形状为[1,宽，高，3], im_scale是其缩放比,float
+    # blob是一张图片，形状为[1,高，宽，3], im_scale是其缩放比,float
     return blob, im_scale
 
 

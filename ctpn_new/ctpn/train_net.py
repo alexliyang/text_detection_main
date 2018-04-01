@@ -112,13 +112,13 @@ class SolverWrapper(object):
 
             feed_dict = {
                 self.net.data: blobs['data'],  # 一个形状为[批数，宽，高，通道数]的源图片，命名为“data”
-                self.net.im_info: blobs['im_info'],  # 一个三维向量，包含宽，高，缩放比例
+                self.net.im_info: blobs['im_info'],  # 一个三维向量，包含高，宽，缩放比例
                 self.net.keep_prob: 0.5,
                 self.net.gt_boxes: gt_boxes,  # GT_boxes信息，N×4矩阵，每一行为一个gt_box，分别代表x1,y1,x2,y2
             }
             try:
                 _ = sess.run(fetches=train_list, feed_dict=feed_dict)
-            except:
+            except NoPositiveError:
                 print("warning: abandon a picture named {}".format(blobs['im_name']))
                 continue
 
@@ -133,10 +133,11 @@ class SolverWrapper(object):
                                                       rpn_loss_cls_val, rpn_loss_box_val, lr.eval()))
                 print('speed: {:.3f}s / iter'.format(_diff_time))
 
-            self.snapshot(sess, iter)
             # 每1000次保存一次模型
             if (iter + 1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千次保存一下ckeckpoints
                 self.snapshot(sess, iter)
+        # for循環結束以後，記錄下最後一次
+        self.snapshot(sess, self.max_iter - 1)
 
 
 def train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):

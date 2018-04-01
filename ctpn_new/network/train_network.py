@@ -5,9 +5,9 @@ from .base_network import base_network as bn
 class train_network(bn):
     def __init__(self, cfg):
         super().__init__(cfg)
-        # 数据的输入入口,是一个形状为[批数，宽，高，通道数]的源图片，命名为“data”
+        # 数据的输入入口,是一个形状为[批数，高，宽，通道数]的源图片，命名为“data”
         self.data = tf.placeholder(tf.float32, shape=[1, None, None, 3], name='data')
-        # 图像信息，一个三维向量，包含宽，高，缩放比例
+        # 图像信息，一个三维向量，包含高，宽，缩放比例
         self.im_info = tf.placeholder(tf.float32, shape=(3,), name='im_info')
         # GT_boxes信息，N×4矩阵，每一行为一个gt_box，分别代表x1,y1,x2,y2
         self.gt_boxes = tf.placeholder(tf.float32, shape=[None, 4], name='gt_boxes')
@@ -50,7 +50,7 @@ class train_network(bn):
         # 经过lstm后，每个像素值将产生512维的向量，这些向量将被产生预测值
 
         # 往两个方向走，一个用于给类别打分，一个用于盒子回归
-        # 用于盒子回归的，输入是10个anchor，每个anchor有有2个回归，即y和高度,形状是[1, H, W, 20],
+        # 用于盒子回归的，输出是10个anchor，每个anchor有有2个回归，即y和高度,形状是[1, H, W, 20],
         # ===============“注意，网络输出的不是预测的盒子的四个坐标，而是y和高度的回归！！！！”========
         (self.feed('lstm_o').lstm_fc(512, 10 * 2, name='rpn_bbox_pred'))
 
