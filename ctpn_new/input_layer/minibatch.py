@@ -22,7 +22,7 @@ def get_minibatch(roidb, cfg):
                    # ”gt_boxes"须是一个N行4列的矩阵，每一行代表一个GT
                    'gt_boxes': np.array(roidb[0]['boxes']),
                    # im_info须是一个包含三个元素的向量，分别代表图片的高，宽，缩放比
-                   'im_info': np.array([im_blob.shape[1], im_blob.shape[2], roidb.image_scale]),
+                   'im_info': np.array([im_blob.shape[1], im_blob.shape[2], roidb[0]['image_scale']]),
                    'im_name': os.path.basename(roidb[0]['image_name'])
                    }
     return single_blob

@@ -5,11 +5,11 @@ from .generate_anchors import generate_anchors
 from .iou import bbox_overlaps
 from lib import load_config
 from exceptions import NoPositiveError
+
 cfg = load_config()
 
 
 def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
-
     # 生成基本的anchor,一共10个,返回一个10行4列矩阵，每行为一个anchor，返回的只是基于中心的相对坐标
     # 这里返回的4个值是对应的某个anchor的xmin, xmax, ymin, ymax
     _anchors = generate_anchors()
@@ -31,7 +31,7 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
 
     # 此时，shift_x作为一个行向量往下复制， 复制的次数等于shift_y的长度
     # 而shift_y作为一个列向量朝右复制，复制的次数等于shift_x的长度。这样他们的维度完全相同
-    shift_x, shift_y = np.meshgrid(shift_x, shift_y) # in W H order
+    shift_x, shift_y = np.meshgrid(shift_x, shift_y)  # in W H order
     # K is H x W
     # .ravel()将数组按行展开，展开为一行
     # .vstack()将四个展开列的以为数组垂直堆叠起来，再转置
@@ -57,20 +57,17 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     all_anchors = all_anchors.reshape((K * A, cfg.TRAIN.COORDINATE_NUM))
     total_anchors = int(K * A)
 
-
     # 仅保留那些还在图像内部的anchor
     inds_inside = np.where(
         (all_anchors[:, 0] >= -_allowed_border) &
         (all_anchors[:, 1] >= -_allowed_border) &
         (all_anchors[:, 2] < im_info[1] + _allowed_border) &  # width
-        (all_anchors[:, 3] < im_info[0] + _allowed_border)    # height
+        (all_anchors[:, 3] < im_info[0] + _allowed_border)  # height
     )[0]
     total_valid_anchors = len(inds_inside)  # 在图片里面的anchors
     assert total_valid_anchors > 0, "The number of total valid anchor must be lager than zero"
     # 经过验证，这里的anchors的宽度全部是16
     anchors = all_anchors[inds_inside, :]  # 保留那些在图像内的anchor
-
-
 
     # 至此，anchor准备好了
     # ===============================================================================
@@ -78,14 +75,28 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     # (A)
 
     # 将有用的label 筛选出来
-    labels = np.empty((total_valid_anchors, ), dtype=np.int8)
+    labels = np.empty((total_valid_anchors,), dtype=np.int8)
     labels.fill(-1)  # 初始化label，均为-1
+
+    '''
+    对于那些中心 在gt box左边框右边50px之内的，以及在有右边框左边 50px之内的anchor来说，称之为side anchor 需要计算其o
+    值，用来进行side refinement的回归
+    side_refinement是一个 k * 3的矩阵，矩阵的每一行代表feature map上一个像素，共k个
+    格式为 tag anchor_center, anchor_width ,x_side_true,tag为标志位，如果为1，说明anchor是side anchor,如果为0，则忽略后面的
+    x_side_true 是side anchor的gt_box的 x轴坐标啊
+    '''
+    side_refinement = np.empty((K * A, 4), dtype=np.float32)
+
+    for ix in range(K * A):
+        if ix in inds_inside:
+            side_refinement[ix, :] = _get_sr_anchor(all_anchors[ix], gt_boxes,cfg.TRAIN.SIDE_ANCHOR_THRESHOLD)
+        else:
+            side_refinement[ix, :] = np.array([0, 0, 0, 0], dtype=np.float32)
 
     # 计算anchor和gt-box的overlap，用来给anchor上标签
     overlaps = bbox_overlaps(
         np.ascontiguousarray(anchors, dtype=np.float),
         np.ascontiguousarray(gt_boxes, dtype=np.float))  # 假设anchors有x个，gt_boxes有y个，返回的是一个（x,y）的数组
-
 
     assert overlaps.shape[0] == total_valid_anchors, "Fatal Error: in the file {}".format(__file__)
     assert overlaps.shape[1] == gt_boxes.shape[0], "Fatal Error: in the file {}".format(__file__)
@@ -98,7 +109,6 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
     labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0
     # cfg.TRAIN.RPN_POSITIVE_OVERLAP = 0.8
     labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1  # overlap大于0.8的认为是前景
-
 
     # TODO 限制正样本的数量不超过150个
     # TODO 这个后期可能还需要修改，毕竟如果使用的是字符的片段，那个正样本的数量是很多的。
@@ -150,7 +160,7 @@ def anchor_target_layer_py(rpn_cls_score, gt_boxes, im_info, _feat_stride):
 
     rpn_bbox_targets = bbox_targets
 
-    return rpn_labels, rpn_bbox_targets
+    return rpn_labels, rpn_bbox_targets, side_refinement
 
 
 # data是内部anchor的分类， count是总的anchor数目， inds是内部anchor的索引
@@ -158,11 +168,11 @@ def _unmap(data, count, inds, fill=0):
     """ Unmap a subset of item (data) back to the original set of items (of
     size count) """
     if len(data.shape) == 1:
-        ret = np.empty((count, ), dtype=np.float32)
+        ret = np.empty((count,), dtype=np.float32)
         ret.fill(fill)
         ret[inds] = data
     else:
-        ret = np.empty((count, ) + data.shape[1:], dtype=np.float32)
+        ret = np.empty((count,) + data.shape[1:], dtype=np.float32)
         ret.fill(fill)
         ret[inds, :] = data
     return ret
@@ -236,3 +246,32 @@ def _compute_targets(ex_rois, labels, gt_rois):
     return bbox_transform(ex_rois, labels, gt_rois).astype(np.float32, copy=False)
 
 
+def _get_sr_anchor(anchor, gt_boxes, threshold):
+    '''
+    anchor: [xmin, ymin, xmin, ymax]
+    '''
+    center = (anchor[0] + anchor[2]) / 2
+    a_w = anchor[2] - anchor[0]
+
+    min_center_box = float('inf')
+    min_idx = -1
+    left = False
+    for idx, box in enumerate(gt_boxes):
+        cur_left_dist = center - box[0]
+        cur_right_dist = box[1] - center
+        if cur_left_dist <= threshold and cur_left_dist < min_center_box:
+            min_center_box = cur_left_dist
+            left = True
+            min_idx = idx
+        if cur_right_dist <= threshold and cur_right_dist < min_center_box:
+            min_center_box = cur_right_dist
+            left = False
+            min_idx = idx
+
+    if min_idx == -1:
+        return np.array([0, 0, 0, 0], dtype=np.float32)
+    else:
+        # 根据数据个数返回，要注意的是返回的是gt_box的left还是right
+        return np.array([1, center, a_w, gt_boxes[min_idx][
+            0 if left else 2
+        ]])
