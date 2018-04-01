@@ -2,6 +2,7 @@ import tensorflow as tf
 import os
 from lib import Timer
 from input_layer import get_data_layer
+from exceptions import NoPositiveError
 
 
 class SolverWrapper(object):
@@ -121,6 +122,7 @@ class SolverWrapper(object):
                 print("warning: abandon a picture named {}".format(blobs['im_name']))
                 continue
 
+
             _diff_time = timer.toc(average=False)
 
             if iter % self._cfg.TRAIN.DISPLAY == 0:
@@ -133,11 +135,8 @@ class SolverWrapper(object):
 
             self.snapshot(sess, iter)
             # 每1000次保存一次模型
-
             if (iter + 1) % self._cfg.TRAIN.SNAPSHOT_ITERS == 0:  # 每一千次保存一下ckeckpoints
                 self.snapshot(sess, iter)
-        # for循環結束以後，記錄下最後一次
-        self.snapshot(sess, self.max_iter)
 
 
 def train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):

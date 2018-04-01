@@ -1,2 +1,3 @@
 class NoPositiveError(Exception):
-    pass
+    def __init__(self, info):
+        print(info)
