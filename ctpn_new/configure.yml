@@ -32,15 +32,15 @@ TRAIN:
   SIDE_ANCHOR_THRESHOLD: 50
 TEST:
   DETECT_MODE: "H"
-  DATA_DIR: dataset/for_test
-  RESULT_DIR: data/results
+  DATA_DIR: dataset/for_test # 测试图片的存储路径
+  RESULT_DIR: data/results # 结果路径
   SCALES: 600
   SCALE: 600
   MAX_SCALE: 1200
   TEXT_PROPOSALS_WIDTH: 16
-  MIN_NUM_PROPOSALS: 2
-  MIN_RATIO: 0.5
-  LINE_MIN_SCORE: 0.9
+  MIN_NUM_PROPOSALS: 2 # 文本的宽度最小由几个片段构成，乘以TEXT_PROPOSALS_WIDTH，则表示最小由几个像素构成
+  MIN_RATIO: 0.5 # 文本的宽度除以高度的阈值
+  LINE_MIN_SCORE: 0.9 # 整个文本的分数阈值，，0.9是不有点高？？？
   MAX_HORIZONTAL_GAP: 50
   TEXT_PROPOSALS_MIN_SCORE: 0.7
   TEXT_PROPOSALS_NMS_THRESH: 0.2

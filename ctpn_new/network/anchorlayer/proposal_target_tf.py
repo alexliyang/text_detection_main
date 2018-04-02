@@ -1,6 +1,7 @@
 from .generate_anchors import generate_anchors
 from lib import load_config
 import numpy as np
+from .anchor_nms_pf import anchor_nms
 cfg = load_config()
 
 
@@ -25,12 +26,10 @@ def proposal_layer(rpn_cls_prob_reshape, rpn_bbox_pred, im_info, _feat_stride=(1
 
     assert rpn_cls_prob_reshape.shape[0] == 1, \
         'Only single item batches are supported'
-
-    pre_nms_topN = cfg.TEST.RPN_PRE_NMS_TOP_N  # 12000,在做nms之前，最多保留的候选box数目
-    post_nms_topN = cfg.TEST.RPN_POST_NMS_TOP_N  # 2000，做完nms之后，最多保留的box的数目
     nms_thresh = cfg.TEST.RPN_NMS_THRESH  # nms用参数，阈值是0.7
     min_size = cfg.TEST.RPN_MIN_SIZE  # 候选box的最小尺寸，目前是16，高宽均要大于16
-    #TODO 后期需要修改这个最小尺寸，改为8？
+    positive_thresh = cfg.TEST.LINE_MIN_SCORE  # 大于这个分数阈值的判为正例
+    # TODO 后期需要修改这个最小尺寸，改为8？
 
     height, width = rpn_cls_prob_reshape.shape[1:3]  # feature-map的高宽
 
@@ -53,56 +52,34 @@ def proposal_layer(rpn_cls_prob_reshape, rpn_bbox_pred, im_info, _feat_stride=(1
     A = _num_anchors
     K = shifts.shape[0]  # feature-map的像素个数
     anchors = _anchors.reshape((1, A, 4)) + shifts.reshape((1, K, 4)).transpose((1, 0, 2))
-    anchors = anchors.reshape((K * A, 4))  # 这里得到的anchor就是整张图像上的所有anchor
-
-    # 把坐标回归reshape为（1×H×W×10，2）的形状,每行对应一个anchor的回归
     bbox_deltas = bbox_deltas.reshape((-1, 2))  # (HxWxA, 2) 模型所输出的盒子回归值
-
-    # Same story for the scores:
-    scores = scores.reshape((-1, 1))  # 分类的前景得分
-
-    # y的回归 = （GT的y - anchor的y） / anchor的高
-    # 高的回归 = log(GT的高 / anchor的高)
-    # 根據輸出的回歸預測值，逆變換到真實坐標的預測值
+    anchors = anchors.reshape((K * A, 4))  # 这里得到的anchor就是整张图像上的所有anchor
     proposals = bbox_transform_inv(anchors, bbox_deltas)  # 做逆变换，得到box在图像上的真实坐标
 
-    # 2. clip predicted boxes to image
+    proposals = proposals.reshape((K, 4*A))
+    scores = scores.reshape((K, A))
+
+    proposals, scores = anchor_nms(height, width, proposals, scores, nms_thresh, positive_thresh)
+    proposals = proposals.reshape((-1, 4))
+    scores = scores.reshape((-1, 1))
+
+    # 对盒子进行裁剪，以保证不会超出图片边框
     proposals = clip_boxes(proposals, im_info[:2])  # 将所有的proposal修建一下，超出图像范围的将会被修剪掉
 
     # 移除那些proposal小于一定尺寸的proposal
     keep = _filter_boxes(proposals, min_size * im_info[2])
     proposals = proposals[keep, :]  # 保留剩下的proposal
     scores = scores[keep]
-    bbox_deltas = bbox_deltas[keep, :]
 
     #  score按得分的高低进行排序,返回脚标
     order = scores.ravel().argsort()[::-1]
-    # 保留12000个proposal进去做nms
-    if len(order) > pre_nms_topN:
-        order = order[: pre_nms_topN]
     proposals = proposals[order, :]
     scores = scores[order]
-    bbox_deltas = bbox_deltas[order, :]
 
-
-    # 6. apply nms (e.g. threshold = 0.7)
-    # 7. take after_nms_topN (e.g. 300)
-    # 8. return the top proposals (-> RoIs top)
-    keep = nms(np.hstack((proposals, scores)), nms_thresh)  # 进行nms操作，保留2000个proposal
-    if len(keep) > post_nms_topN:
-        keep = keep[: post_nms_topN]
-    proposals = proposals[keep, :]
-    scores = scores[keep]
-    bbox_deltas = bbox_deltas[keep, :]
-
-
-    # Output rois blob
-    # Our RPN implementation only supports a single input image, so all
-    # batch inds are 0
     blob = np.hstack((scores.astype(np.float32, copy=False), proposals.astype(np.float32, copy=False)))
     # blob返回一個多行5列矩陣，第一行爲分數，後四行爲盒子坐標
-    # bbox_deltas爲多行四列矩陣，每行爲一個回歸值
-    return blob, bbox_deltas
+    # bbox_deltas爲多行两列矩陣，每行爲一個回歸值
+    return blob
 
 
 def bbox_transform_inv(boxes, deltas):

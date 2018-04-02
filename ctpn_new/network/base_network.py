@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 from .anchorlayer.anchor_target_tf import anchor_target_layer_py
 from .anchorlayer.proposal_target_tf import proposal_layer as proposal_layer_py
-
 DEFAULT_PADDING = "SAME"
 
 
@@ -85,7 +84,7 @@ class base_network(object):
             # 相当于 tf.Variable() 这里cfg.TRAIN.WEIGHT_DECAY = 0.0005
 
             kernel = tf.get_variable(name='weights', shape=[k_h, k_w, c_i, c_o], initializer=init_weights,
-                                     trainable=trainable, regularizer=self.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
+                                     trainable=trainable, regularizer=base_network.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
 
             if biased:
                 biases = tf.get_variable(name='biases', shape=[c_o], initializer=init_biases, trainable=trainable)
@@ -101,7 +100,7 @@ class base_network(object):
                 return conv
 
     @staticmethod
-    def l2_regularizer(self, weight_decay=0.0005, scope=None):
+    def l2_regularizer(weight_decay=0.0005, scope=None):
         def regularizer(tensor):
             with tf.name_scope(scope, default_name='l2_regularizer', values=[tensor]):
                 l2_weight = tf.convert_to_tensor(weight_decay, dtype=tensor.dtype.base_dtype, name='weight_decay')
@@ -148,7 +147,7 @@ class base_network(object):
             # 初始化权重，权重是需要正则化的
             weights = tf.get_variable(name='weights', shape=[2 * d_h, d_o], initializer=init_weights,
                                       trainable=trainable,
-                                      regularizer=self.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
+                                      regularizer=base_network.l2_regularizer(self._cfg.TRAIN.WEIGHT_DECAY))
             # 偏执不需要正则化
             biases = tf.get_variable(name='biases', shape=[d_o], initializer=init_biases, trainable=trainable)
 
@@ -168,7 +167,7 @@ class base_network(object):
             init_biases = tf.constant_initializer(0.0)
 
             weights = tf.get_variable(name='weights', shape=[d_i, d_o], initializer=init_weights,
-                                      trainable=trainable, regularizer=self.l2_regularizer(
+                                      trainable=trainable, regularizer=base_network.l2_regularizer(
                     self._cfg.TRAIN.WEIGHT_DECAY))
             # 偏置不需要正则化
             biases = tf.get_variable(name='biases', shape=[d_o], initializer=init_biases, trainable=trainable)
@@ -183,7 +182,7 @@ class base_network(object):
         # input的最后一个维度必须是3 ，即'rpn_cls_score', 'gt_boxes', 'im_info'
         assert len(input) == 3
 
-        with tf.variable_scope(name) as scope:
+        with tf.variable_scope(name):
             # 'rpn_cls_score', 'gt_boxes', 'im_info'
 
             """
@@ -194,6 +193,7 @@ class base_network(object):
             """
             # rpn_labels：(1, height, width, 10) height width为feature map对应的宽 高，一个像素只有一个标签
             # rpn_bbox_targets (1, height, width, 20) 标签为1的标签后回归目标
+
             rpn_labels, rpn_bbox_targets, rpn_side_refinement = tf.py_func(anchor_target_layer_py,
                                                                            # input 分别对应 rpn_cls_score gt_boxes im_info
                                                                            [input[0], input[1], input[2], _feat_stride],
@@ -221,16 +221,17 @@ class base_network(object):
             # input[0] shape is (1, H, W, Ax2)
             # rpn_rois <- (1 x H x W x A, 5) [0, x1, y1, x2, y2]
         with tf.variable_scope(name):
-            blob, bbox_delta = tf.py_func(proposal_layer_py,
+            # blob返回一個多行5列矩陣，第一列为分数，后四列为盒子坐标
+            blob = tf.py_func(proposal_layer_py,
                                           [input[0], input[1], input[2], _feat_stride],
-                                          [tf.float32, tf.float32])
+                                          [tf.float32])
 
-            rpn_rois = tf.convert_to_tensor(tf.reshape(blob, [-1, 5]), name='rpn_rois')  # shape is (1 x H x W x A, 2)
-            rpn_targets = tf.convert_to_tensor(bbox_delta, name='rpn_targets')  # shape is (1 x H x W x A, 4)
-            self.layers['rpn_rois'] = rpn_rois
-            self.layers['rpn_targets'] = rpn_targets
+            rpn_rois = tf.convert_to_tensor(tf.reshape(blob, [-1, 5]), name='rpn_rois')  # shape is (1 x H x W x A, 5)
+            # rpn_targets = tf.convert_to_tensor(bbox_delta, name='rpn_targets')  # shape is (1 x H x W x A, 2)
+            # self.layers['rpn_rois'] = rpn_rois
+            # self.layers['rpn_targets'] = rpn_targets
 
-            return rpn_rois, rpn_targets
+            return rpn_rois
 
     @layer
     def spatial_reshape_layer(self, input, d, name):
