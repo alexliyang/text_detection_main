@@ -33,7 +33,7 @@ TRAIN:
 TEST:
   DETECT_MODE: "H"
   DATA_DIR: dataset/for_test # 测试图片的存储路径
-  RESULT_DIR: data/results # 结果路径
+  RESULT_DIR: dataset/results # 结果路径
   SCALES: 600
   SCALE: 600
   MAX_SCALE: 1200
