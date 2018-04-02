@@ -33,7 +33,7 @@ class SolverWrapper(object):
         # data_layer对象是一批一批地传递处理好了的数据
         data_layer = get_data_layer(self.roidb, self._cfg)
 
-        total_loss, model_loss, rpn_cross_entropy, rpn_loss_box = self.net.build_loss()
+        total_loss, model_loss, rpn_cross_entropy, rpn_loss_box, rpn_sr_loss = self.net.build_loss()
 
         # cfg.TRAIN.LEARNING_RATE = 0.00001
         lr = tf.Variable(self._cfg.TRAIN.LEARNING_RATE, trainable=False)
@@ -89,7 +89,7 @@ class SolverWrapper(object):
                 raise 'Check your pretrained {:s}'.format(ckpt.model_checkpoint_path)
         timer = Timer()
 
-        loss_list = [total_loss, model_loss, rpn_cross_entropy, rpn_loss_box]
+        loss_list = [total_loss, model_loss, rpn_cross_entropy, rpn_loss_box, rpn_sr_loss]
         train_list = [train_op]
 
         for iter in range(restore_iter, self.max_iter):
@@ -127,11 +127,12 @@ class SolverWrapper(object):
             _diff_time = timer.toc(average=False)
 
             if iter % self._cfg.TRAIN.DISPLAY == 0:
-                total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val \
-                    = sess.run(fetches=loss_list, feed_dict=feed_dict)
+                total_loss_val, model_loss_val, rpn_loss_cls_val, rpn_loss_box_val, rpn_sr_loss = sess.run(
+                    fetches=loss_list, feed_dict=feed_dict)
                 print('iter: %d / %d, total loss: %.4f, model loss: %.4f, rpn_loss_cls: %.4f, '
-                      'rpn_loss_box: %.4f, lr: %f' % (iter, self.max_iter, total_loss_val, model_loss_val,
-                                                      rpn_loss_cls_val, rpn_loss_box_val, lr.eval()))
+                      'rpn_loss_box: %.4f, rpn_sr_loss: %.4f, lr: %f' % (
+                      iter, self.max_iter, total_loss_val, model_loss_val,
+                      rpn_loss_cls_val, rpn_loss_box_val, rpn_sr_loss, lr.eval()))
                 print('speed: {:.3f}s / iter'.format(_diff_time))
 
             # 每1000次保存一次模型
