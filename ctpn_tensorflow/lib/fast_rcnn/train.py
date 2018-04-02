@@ -185,8 +185,6 @@ class SolverWrapper(object):
                 last_snapshot_iter = iter
                 self.snapshot(sess, iter)
 
-        if last_snapshot_iter != iter:
-            self.snapshot(sess, iter)
 
 def get_training_roidb(imdb):
     """Returns a roidb (Region of Interest database) for use in training."""

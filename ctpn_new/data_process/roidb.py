@@ -13,24 +13,19 @@ def get_training_roidb(config):
     # 是否要翻转图片，如果需要的话将翻转的图片追加
     if config.TRAIN.USE_FLIPPED:
         base_roidb.append_flipped_images()
-
     print('done')
+    return base_roidb
 
 
 class roidb(object):
     def __init__(self, config=None):
         print('roidb initializing......')
-        assert config != None, 'roidb lack config'
+        assert config, 'roidb lack config'
 
         self.config = config
         self._image_path = config.TRAIN.TRAIN_PATH + '/Imageset'
         self._image_gt = config.TRAIN.TRAIN_PATH + '/Imageinfo'
         self._train_data_path = config.TRAIN.TRAIN_PATH
-
-        self._classes = ('__background__', 'text')
-        self._num_classes = 2
-
-        # self._image_index =[]
         self._setup()
 
     '''_image_index ['xxx.jpg','yyy.jpg'......]'''
@@ -55,19 +50,24 @@ class roidb(object):
     '''
 
     def _load_image_set_index(self):
+        #  一个路径，里面每一行分别是 图片名，宽，高，缩放比
         image_set_file = os.path.join(self._train_data_path, 'train_set.txt')
 
         assert os.path.exists(image_set_file), 'Path does not exist: {}'.format(image_set_file)
-        image_index = []
-        image_info = []
+        image_index = []  # 该列表存放图片名
+        image_info = []  # 一个列表，列表的长度是图片的张数，列表的每个元素是一个四维向量，存放高，宽，channal，缩放比
         with open(image_set_file) as f:
             lines = f.readlines()
         for line in lines:
             line = line.strip().split(',')
-            image_index.append(line[0])  # xxxx.name
-            image_info.append(line[1:])
-
+            image_index.append(line[0])  # 图片名
+            # TODO 这里必须是高在前，宽在后
+            im_info = list(map(float, line[1:]))
+            im_info[2] = int(im_info[2])
+            image_info.append(im_info)
+        # 一个列表，列表的长度是图片的张数，列表的每个元素是一个字符串，存放图片的名字
         self._image_index = image_index
+        # 一个列表，列表的长度是图片的张数，列表的每个元素是一个四维向量，存放高，宽，channal，缩放比
         self._image_info = image_info
 
     def _gt_roidb(self):
@@ -92,6 +92,14 @@ class roidb(object):
 
             print('wrote gt roidb to {}'.format(cache_file))
         self._roidb = gt_roidb
+        """
+        gt_roidb是一个列表，列表的每个元素是一个字典，字典的键有
+        'image_name'：字符串，表示图片名字
+        'boxes'：N行4列矩阵，uint16 每一行表示一个GT
+        ”height“:高
+        "width"：宽
+        ”image_path“：图片路径
+        """
 
     def _process_each_image_gt(self, index, image_name):
 
@@ -103,8 +111,7 @@ class roidb(object):
         num_objs = len(gt_boxes)
 
         boxes = np.zeros((num_objs, 4), dtype=np.uint16)
-        gt_classes = np.zeros((num_objs), dtype=np.int32)
-        overlaps = np.zeros((num_objs, self._num_classes), dtype=np.float32)
+
         # "Seg" area for pascal is just the box area
         # seg_areas = np.zeros((num_objs), dtype=np.float32)
         # ishards = np.zeros((num_objs), dtype=np.int32)
@@ -132,8 +139,6 @@ class roidb(object):
             # overlaps[ix, cls] = 1.0
             # # seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
 
-        overlaps = scipy.sparse.csr_matrix(overlaps)
-
         return {
             'image_path': self._get_image_path_with_name(image_name),
             'image_name': image_name,
@@ -141,11 +146,6 @@ class roidb(object):
             'height': single_img_info[1],
             'image_scale': single_img_info[2],
             'boxes': boxes,
-            # 'gt_classes': gt_classes,
-            # 'gt_ishard': ishards,
-            # 'gt_overlaps': overlaps,
-            # 'flipped': False,
-            # 'seg_areas': seg_areas
         }
 
     def append_flipped_images(self):
