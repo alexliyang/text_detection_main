@@ -120,8 +120,9 @@ class SolverWrapper(object):
                 _ = sess.run(fetches=train_list, feed_dict=feed_dict)
             except NoPositiveError:
                 print("warning: abandon a picture named {}".format(blobs['im_name']))
+            except :
+                print("=================================")
                 continue
-
 
             _diff_time = timer.toc(average=False)
 

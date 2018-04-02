@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 from .anchorlayer.anchor_target_tf import anchor_target_layer_py
 from .anchorlayer.proposal_target_tf import proposal_layer as proposal_layer_py
-
 DEFAULT_PADDING = "SAME"
 
 
@@ -181,7 +180,7 @@ class base_network(object):
         # input的最后一个维度必须是3 ，即'rpn_cls_score', 'gt_boxes', 'im_info'
         assert len(input) == 3
 
-        with tf.variable_scope(name) as scope:
+        with tf.variable_scope(name):
             # 'rpn_cls_score', 'gt_boxes', 'im_info'
 
             """
@@ -192,6 +191,7 @@ class base_network(object):
             """
             # rpn_labels：(1, height, width, 10) height width为feature map对应的宽 高，一个像素只有一个标签
             # rpn_bbox_targets (1, height, width, 20) 标签为1的标签后回归目标
+
             rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer_py,
                                                       # input 分别对应 rpn_cls_score gt_boxes im_info
                                                       [input[0], input[1], input[2], _feat_stride],
@@ -219,17 +219,16 @@ class base_network(object):
             # rpn_rois <- (1 x H x W x A, 5) [0, x1, y1, x2, y2]
         with tf.variable_scope(name):
             # blob返回一個多行5列矩陣，第一列为分数，后四列为盒子坐标
-            # bbox_deltas爲多行两列矩陣，每行爲一個回歸值
-            blob, bbox_delta = tf.py_func(proposal_layer_py,
+            blob = tf.py_func(proposal_layer_py,
                                           [input[0], input[1], input[2], _feat_stride],
-                                          [tf.float32, tf.float32])
+                                          [tf.float32])
 
-            rpn_rois = tf.convert_to_tensor(tf.reshape(blob, [-1, 5]), name='rpn_rois')  # shape is (1 x H x W x A, 2)
-            rpn_targets = tf.convert_to_tensor(bbox_delta, name='rpn_targets')  # shape is (1 x H x W x A, 4)
-            self.layers['rpn_rois'] = rpn_rois
-            self.layers['rpn_targets'] = rpn_targets
+            rpn_rois = tf.convert_to_tensor(tf.reshape(blob, [-1, 5]), name='rpn_rois')  # shape is (1 x H x W x A, 5)
+            # rpn_targets = tf.convert_to_tensor(bbox_delta, name='rpn_targets')  # shape is (1 x H x W x A, 2)
+            # self.layers['rpn_rois'] = rpn_rois
+            # self.layers['rpn_targets'] = rpn_targets
 
-            return rpn_rois, rpn_targets
+            return rpn_rois
 
 
 
