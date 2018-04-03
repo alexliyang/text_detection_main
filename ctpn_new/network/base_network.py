@@ -232,7 +232,6 @@ class base_network(object):
 
 
 
-
     @layer
     def spatial_reshape_layer(self, input, d, name):
         input_shape = tf.shape(input)

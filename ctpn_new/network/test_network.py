@@ -4,16 +4,26 @@ from .base_network import base_network
 
 
 class test_network(base_network):
-    def _int__(self, cfg):
+    def __init__(self, cfg):
+        super().__init__(cfg)
         self.cfg = cfg
         self.data = tf.placeholder(tf.float32, shape=[1, None, None, 3])
         self.im_info = tf.placeholder(tf.float32, shape=(3,))  # 图片信息，（高，宽，缩放比）
         self.keep_prob = tf.placeholder(tf.float32)
-        self.inputs = []
-        self.layers = dict({'data': self.data, 'im_info': self.im_info})
         self.setup()
+    #     self.__saver = tf.train.Saver()
+    #
+    # @property
+    # def saver(self):
+    #     return self.__saver
+    #
+    # @saver.setter
+    # def saver(self, s):
+    #     pass
 
     def setup(self):
+        self.inputs = []
+        self.layers = dict({'data': self.data, 'im_info': self.im_info})
         anchor_scales = 16
         _feat_stride = [16, ]
         # =========VGG16网络结构,与训练部分相同========

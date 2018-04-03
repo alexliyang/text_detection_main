@@ -59,9 +59,11 @@ def proposal_layer(rpn_cls_prob_reshape, rpn_bbox_pred, im_info, _feat_stride=(1
     proposals = proposals.reshape((K, 4*A))
     scores = scores.reshape((K, A))
 
+    # 非极大值抑制，以列表形式输出进行列非极大值抑制后的文本片段以及相应的分数
     proposals, scores = anchor_nms(height, width, proposals, scores, nms_thresh, positive_thresh)
-    proposals = proposals.reshape((-1, 4))
-    scores = scores.reshape((-1, 1))
+
+    proposals = np.array(proposals).reshape((-1, 4))
+    scores = np.array(scores).reshape((-1, 1))
 
     # 对盒子进行裁剪，以保证不会超出图片边框
     proposals = clip_boxes(proposals, im_info[:2])  # 将所有的proposal修建一下，超出图像范围的将会被修剪掉
@@ -70,11 +72,11 @@ def proposal_layer(rpn_cls_prob_reshape, rpn_bbox_pred, im_info, _feat_stride=(1
     keep = _filter_boxes(proposals, min_size * im_info[2])
     proposals = proposals[keep, :]  # 保留剩下的proposal
     scores = scores[keep]
-
     #  score按得分的高低进行排序,返回脚标
     order = scores.ravel().argsort()[::-1]
     proposals = proposals[order, :]
     scores = scores[order]
+
 
     blob = np.hstack((scores.astype(np.float32, copy=False), proposals.astype(np.float32, copy=False)))
     # blob返回一個多行5列矩陣，第一行爲分數，後四行爲盒子坐標

@@ -27,8 +27,8 @@ class TextProposalGraphBuilder:
         # 取出第index号文本片段
         box = self.text_proposals[index]
         results = []
-        # self._cfg.MAX_HORIZONTAL_GAP = 50, 水平距离不超过50个像素的文本片段有可能对应同一个文本
-        for left in range(int(box[0])+1, min(int(box[0])+self._cfg.MAX_HORIZONTAL_GAP+1, self.im_size[1])):
+        # MAX_HORIZONTAL_GAP = 50, 水平距离不超过50个像素的文本片段有可能对应同一个文本
+        for left in range(int(box[0])+1, min(int(box[0])+self._cfg.TEST.MAX_HORIZONTAL_GAP+1, self.im_size[1])):
             # 取出x1=left的所有文本片段
             adj_box_indices = self.boxes_table[left]
             for adj_box_index in adj_box_indices:
@@ -47,7 +47,7 @@ class TextProposalGraphBuilder:
         """
         box = self.text_proposals[index]
         results = []
-        for left in range(int(box[0])-1, max(int(box[0]-self._cfg.MAX_HORIZONTAL_GAP), 0)-1, -1):
+        for left in range(int(box[0])-1, max(int(box[0]-self._cfg.TEST.MAX_HORIZONTAL_GAP), 0)-1, -1):
             adj_box_indices = self.boxes_table[left]
             for adj_box_index in adj_box_indices:
                 if self.meet_v_iou(adj_box_index, index):
@@ -81,7 +81,7 @@ class TextProposalGraphBuilder:
         # 高度的相似度
         h_similarity = min(h1, h2)/max(h1, h2)
         # y方向的iou和高度相似度是否都大于阈值
-        return y_iou >= self._cfg.MIN_V_OVERLAPS and h_similarity >= self._cfg.MIN_SIZE_SIM
+        return y_iou >= self._cfg.TEST.MIN_V_OVERLAPS and h_similarity >= self._cfg.TEST.MIN_SIZE_SIM
 
     def build_graph(self, text_proposals, scores, im_size):
         """

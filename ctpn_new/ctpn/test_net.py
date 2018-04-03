@@ -9,10 +9,12 @@ from lib.timer import Timer
 from lib.text_connector.detectors import TextDetector
 from exceptions import NoPositiveError
 
+
 class TestClass(object):
     def __init__(self, cfg, network):
         self._cfg = cfg
         self._net = network
+        # self.saver = network.saver
 
     # 画方框,被ctpn()调用
     def draw_boxes(self, img, image_name, boxes, scale):
@@ -32,10 +34,12 @@ class TestClass(object):
                 # TODO 下面注释掉的这两行不知是啥意思
                 # if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
                 #     continue
+                # 默认用红色线条绘制，可能性最低
+                color = (0, 0, 255)  # 颜色为BGR
                 # 大于0.9的，用绿色线条绘制
                 if box[8] >= 0.9:
                     color = (0, 255, 0)
-                # 大于0.8的，用红色线条绘制
+                # 大于0.8的，用蓝色线条绘制
                 elif box[8] >= 0.8:
                     color = (255, 0, 0)
                 cv2.line(img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), color, 2)
@@ -84,7 +88,7 @@ class TestClass(object):
         im_orig -= self._cfg.TRAIN.PIXEL_MEANS
 
         # 将缩放和去均值化以后的图片，放入网络进行前向计算，获取分数和对应的文本片段，该片段为映射到最原始图片的坐标
-        scores, boxes = TestClass.test_ctpn(sess, net, img, scale)
+        scores, boxes = TestClass.test_ctpn(sess, net, im_orig, scale)
 
         # 此处调用了一个文本检测器
         textdetector = TextDetector(self._cfg)
@@ -102,23 +106,24 @@ class TestClass(object):
         print(('Detection took {:.3f}s for '
                '{:d} object proposals').format(timer.total_time, boxes.shape[0]))
 
-    def test_net(self):
+    def test_net(self, graph):
         # 定义结果输出的路径(trd 是test_result_dir缩写 )
         trd = self._cfg.TEST.RESULT_DIR
         if os.path.exists(trd):
             shutil.rmtree(trd)
         os.makedirs(trd)
-
+        saver = tf.train.Saver()
         # 创建一个Session
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allocator_type = 'BFC'
         config.gpu_options.per_process_gpu_memory_fraction = 0.9
-        sess = tf.Session(config=config)
+
+        sess = tf.Session(config=config, graph=graph)
 
         # 获取一个Saver()实例
-        saver = tf.train.Saver()
+
         # 恢复模型参数
-        ckpt = tf.train.get_checkpoint_state(self._cfg.COMMON.CHKPT)
+        ckpt = tf.train.get_checkpoint_state(self._cfg.COMMON.CKPT)
         if ckpt and ckpt.model_checkpoint_path:
             print('Restoring from {}...'.format(ckpt.model_checkpoint_path), end=' ')
             try:
@@ -129,12 +134,15 @@ class TestClass(object):
         else:
             raise 'Check your pretrained {:s}'.format(self._cfg.TEST.RESULT_DIR)
 
-        # TODO 这里需要仔细测试一下
-        im_names = glob.glob(os.path.join(self._cfg.TEST.DATA_DIR, 'for_test', '*.png')) + \
-                   glob.glob(os.path.join(self._cfg.TEST.DATA_DIR, 'for_test', '*.jpg'))
+        # # TODO 这里需要仔细测试一下
+        # im_names = glob.glob(os.path.join(self._cfg.TEST.DATA_DIR, '*.png')) + \
+        #            glob.glob(os.path.join(self._cfg.TEST.DATA_DIR, '*.jpg'))
+
+        im_names = os.listdir(self._cfg.TEST.DATA_DIR)
 
         assert len(im_names) > 0, "Nothing to test"
-        for im_name in im_names:
+        for im in im_names:
+            im_name = os.path.join(self._cfg.TEST.DATA_DIR, im)
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print(('Testing for image {:s}'.format(im_name)))
             try:
@@ -149,7 +157,9 @@ class TestClass(object):
 
     @ staticmethod
     def test_ctpn(sess, net, im, scale):
-        im_info = np.array([im.shape[0], im.shape[1]], scale)
+        # print("===============", type(im))
+        im_info = np.array([im.shape[0], im.shape[1], scale])
+        im = np.expand_dims(im, axis=0)
         feed_dict = {net.data: im, net.im_info: im_info, net.keep_prob: 1.0}
         fetches = [net.get_output('rois'), ]
 
@@ -158,7 +168,8 @@ class TestClass(object):
         rois = sess.run(fetches=fetches, feed_dict=feed_dict)
         if len(rois) == 0:
             raise NoPositiveError("Found no region of interest")
-        # 取出分数
+        # sess.run是以列表形式返回结果，所以这里需要[0]，以取出数组
+        rois = rois[0]
         scores = rois[:, 0]
         # 除以缩放比，得到原图坐标，注意，这里已经恢复为原图坐标了！！！！！！！！！！！！！！！！！！！！！！
         boxes = rois[:, 1:5] / scale
