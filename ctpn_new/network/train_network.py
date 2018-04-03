@@ -21,28 +21,28 @@ class train_network(bn):
         _feat_stride = [16, ]
 
         # padding本来是“VALID”，我把下面的padding全部改为了“SAME”， 以充分检测
-        (self.feed('data')   # 把[批数，宽，高，通道]形式的源图像数据喂入inputs
-             .conv(3, 3, 64, 1, 1, name='conv1_1')
-             .conv(3, 3, 64, 1, 1, name='conv1_2')   # k_h, k_w, c_o, s_h, s_w, name,
-             .max_pool(2, 2, 2, 2, padding='SAME', name='pool1')
-             .conv(3, 3, 128, 1, 1, name='conv2_1')
-             .conv(3, 3, 128, 1, 1, name='conv2_2')
-             .max_pool(2, 2, 2, 2, padding='SAME', name='pool2')
-             .conv(3, 3, 256, 1, 1, name='conv3_1')
-             .conv(3, 3, 256, 1, 1, name='conv3_2')
-             .conv(3, 3, 256, 1, 1, name='conv3_3')
-             .max_pool(2, 2, 2, 2, padding='SAME', name='pool3')
-             .conv(3, 3, 512, 1, 1, name='conv4_1')
-             .conv(3, 3, 512, 1, 1, name='conv4_2')
-             .conv(3, 3, 512, 1, 1, name='conv4_3')
-             .max_pool(2, 2, 2, 2, padding='SAME', name='pool4')
-             .conv(3, 3, 512, 1, 1, name='conv5_1')
-             .conv(3, 3, 512, 1, 1, name='conv5_2')
-             .conv(3, 3, 512, 1, 1, name='conv5_3'))
+        (self.feed('data')  # 把[批数，宽，高，通道]形式的源图像数据喂入inputs
+         .conv(3, 3, 64, 1, 1, name='conv1_1')
+         .conv(3, 3, 64, 1, 1, name='conv1_2')  # k_h, k_w, c_o, s_h, s_w, name,
+         .max_pool(2, 2, 2, 2, padding='SAME', name='pool1')
+         .conv(3, 3, 128, 1, 1, name='conv2_1')
+         .conv(3, 3, 128, 1, 1, name='conv2_2')
+         .max_pool(2, 2, 2, 2, padding='SAME', name='pool2')
+         .conv(3, 3, 256, 1, 1, name='conv3_1')
+         .conv(3, 3, 256, 1, 1, name='conv3_2')
+         .conv(3, 3, 256, 1, 1, name='conv3_3')
+         .max_pool(2, 2, 2, 2, padding='SAME', name='pool3')
+         .conv(3, 3, 512, 1, 1, name='conv4_1')
+         .conv(3, 3, 512, 1, 1, name='conv4_2')
+         .conv(3, 3, 512, 1, 1, name='conv4_3')
+         .max_pool(2, 2, 2, 2, padding='SAME', name='pool4')
+         .conv(3, 3, 512, 1, 1, name='conv5_1')
+         .conv(3, 3, 512, 1, 1, name='conv5_2')
+         .conv(3, 3, 512, 1, 1, name='conv5_3'))
         # ========= RPN ============
         # 在conv5_3中做滑动窗， 得到3×3×512的特征向量
         (self.feed('conv5_3')
-             .conv(3, 3, 512, 1, 1, name='rpn_conv/3x3'))
+         .conv(3, 3, 512, 1, 1, name='rpn_conv/3x3'))
         # 将得到3×3×512的特征向量提取10个anchor并做双向LSTM中
         # 直接将划窗后的每个像素值送入到lstm中，由lstm提取出前后像素之间的联系
         (self.feed('rpn_conv/3x3').bilstm(512, 128, 512, name='lstm_o'))  # 这里的512必须与最后一个卷积层的512匹配
@@ -57,6 +57,9 @@ class train_network(bn):
         # 用于盒子分类的，输出是[1, H, W, 20],
         (self.feed('lstm_o').lstm_fc(512, 10 * 2, name='rpn_cls_score'))
 
+        # 预测 用户盒子的side_refinement中的 x_side
+        self.feed('lstm_o').lstm_fc(512, 10, name='rpn_side_refinement_x_pred')
+
         """
         返回值如下
         rpn_labels是(1, FM的高，FM的宽，10),其中约150个值为0,表示正例; 150个值为1表示负例;其他的为-1,不用于训练
@@ -69,13 +72,13 @@ class train_network(bn):
         # 经过这步之后，rpn_labels, rpn_bbox_targets将被得出，被存到self.layers['rpn-data']中，将在build loss阶段被取出加入到损失函数中
         # rpn_labels将被用来和预测值进行比较，具体为下一步softmax得出的rpn_cls_score_reshape
         (self.feed('rpn_cls_score', 'gt_boxes', 'im_info')
-             .anchor_target_layer(_feat_stride, name='rpn-data'))
+         .anchor_target_layer(_feat_stride, name='rpn-data'))
 
         # shape is (1, H, W, Ax2) -> (1, H, WxA, 2)
         # 给之前得到的score进行softmax，得到0-1之间的得分
         (self.feed('rpn_cls_score')
-             .spatial_reshape_layer(2, name='rpn_cls_score_reshape')  # 把最后一个维度变成2,即(1,H,W,Ax2)->(1,H,WxA,2)
-             .spatial_softmax(name='rpn_cls_prob'))  # 执行softmax，再转换为(1, H, WxA,2)
+         .spatial_reshape_layer(2, name='rpn_cls_score_reshape')  # 把最后一个维度变成2,即(1,H,W,Ax2)->(1,H,WxA,2)
+         .spatial_softmax(name='rpn_cls_prob'))  # 执行softmax，再转换为(1, H, WxA,2)
 
 def get_train_network(cfg):
     return train_network(cfg)

@@ -63,9 +63,9 @@ class base_network(object):
                     try:
                         var = tf.get_variable(subkey)
                         session.run(var.assign(data_dict[key][subkey]))
-                        print("assign pretrain model "+subkey+ " to "+key)
+                        print("assign pretrain model " + subkey + " to " + key)
                     except ValueError:
-                        print("ignore "+key)
+                        print("ignore " + key)
                         if not ignore_missing:
                             raise
     @layer
@@ -192,19 +192,19 @@ class base_network(object):
             # rpn_labels：(1, height, width, 10) height width为feature map对应的宽 高，一个像素只有一个标签
             # rpn_bbox_targets (1, height, width, 20) 标签为1的标签后回归目标
 
-            rpn_labels, rpn_bbox_targets = tf.py_func(anchor_target_layer_py,
-                                                      # input 分别对应 rpn_cls_score gt_boxes im_info
-                                                      [input[0], input[1], input[2], _feat_stride],
-                                                      [tf.float32, tf.float32])
+            rpn_labels, rpn_bbox_targets, rpn_side_refinement = tf.py_func(anchor_target_layer_py,
+                                                                           # input 分别对应 rpn_cls_score gt_boxes im_info
+                                                                           [input[0], input[1], input[2], _feat_stride],
+                                                                           [tf.float32, tf.float32, tf.float32])
 
             rpn_labels = tf.convert_to_tensor(tf.cast(rpn_labels, tf.int32), name='rpn_labels')
             rpn_bbox_targets = tf.convert_to_tensor(rpn_bbox_targets, name='rpn_bbox_targets')
+            rpn_side_refinement = tf.convert_to_tensor(rpn_side_refinement, name='rpn_side_refinement')
 
-            # TODO 这里暂时只需要返回标签和anchor回归目标就可以了，后续会增加side refinement
-            return rpn_labels, rpn_bbox_targets
+            return rpn_labels, rpn_bbox_targets, rpn_side_refinement
 
     @layer
-    def proposal_layer(self, input, _feat_stride,  name):
+    def proposal_layer(self, input, _feat_stride, name):
         # input 是一个包含三个元素的列表，包含一下三个元素值
         """
         'rpn_cls_prob_reshape': softmax以后的概率值，形状为(1, H, W, Ax2)
@@ -224,13 +224,7 @@ class base_network(object):
                                           [tf.float32])
 
             rpn_rois = tf.convert_to_tensor(tf.reshape(blob, [-1, 5]), name='rpn_rois')  # shape is (1 x H x W x A, 5)
-            # rpn_targets = tf.convert_to_tensor(bbox_delta, name='rpn_targets')  # shape is (1 x H x W x A, 2)
-            # self.layers['rpn_rois'] = rpn_rois
-            # self.layers['rpn_targets'] = rpn_targets
-
             return rpn_rois
-
-
 
     @layer
     def spatial_reshape_layer(self, input, d, name):
@@ -301,14 +295,40 @@ class base_network(object):
         # rpn_loss_box = tf.reduce_sum(rpn_loss_box_n) / (tf.shape(fg_keep)[0] + 1)
         rpn_cross_entropy = tf.reduce_mean(rpn_cross_entropy_n)
 
-        model_loss = rpn_cross_entropy + rpn_loss_box
+        '''添加 side refinement loss========================================='''
+        # 预测的side refinement x-side
+        # side_refinement shape (H*W*10, 4)
+        rpn_sr_targets = self.get_output('rpn-data')[2]
+        # 提取出有效的side anchor的索引
+        sr_inds = tf.where(tf.equal(rpn_sr_targets[:, 0], 1))
+        sr_inds = tf.reshape(sr_inds, [-1])
+
+        rpn_sr_targets = tf.gather(rpn_sr_targets, sr_inds)
+
+        rpn_side_refinement_x_pred = self.get_output('rpn_side_refinement_x_pred')  # shape [1, H, W, 10]
+        # x-predict side anchor 的预测偏移
+        rpn_side_refinement_x_pred = tf.reshape(rpn_side_refinement_x_pred, [-1])
+        rpn_sr_pred = tf.gather(rpn_side_refinement_x_pred, sr_inds)
+
+        # assert rpn_sr_pred.shape[0] == rpn_sr_targets.shape[0], 'rpn side refinement does not match'
+
+        o_pred = (rpn_sr_pred - rpn_sr_targets[:, 1]) / rpn_sr_targets[:, 2]
+        o_target = (rpn_sr_targets[:, 3] - rpn_sr_targets[:, 1]) / rpn_sr_targets[:, 2]
+
+        # 对rpn_sr_pred 和 rpn_sr_targets计算soomth l1 损失
+        # rpn_sr_loss = tf.reduce_sum(self.smooth_l1_dist((o_pred - o_target)), reduction_indices=[1])
+
+        rpn_sr_loss = tf.reduce_sum(self.smooth_l1_dist((o_pred - o_target)))
+
+        # 模型损失由三部分组成，分类交叉熵 + anchor高和位置的回归 + side refinement 回归
+        model_loss = rpn_cross_entropy + rpn_loss_box + rpn_sr_loss
 
         # 把正则化项取出来，以列表形式返回
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         total_loss = tf.add_n(regularization_losses) + model_loss
 
         # 返回总损失（分类的交叉熵+盒子回归+正则化项）， 模型损失（分类的交叉熵+盒子回归）， 分类交叉熵， 盒子回归损失
-        return total_loss, model_loss, rpn_cross_entropy, rpn_loss_box
+        return total_loss, model_loss, rpn_cross_entropy, rpn_loss_box, rpn_sr_loss
 
     @staticmethod
     def smooth_l1_dist(deltas, sigma2=9.0, name='smooth_l1_dist'):
@@ -325,3 +345,22 @@ class base_network(object):
         return tf.reshape(tf.nn.softmax(tf.reshape(input, [-1, input_shape[3]])),
                           [-1, input_shape[1], input_shape[2], input_shape[3]], name=name)
 
+    # @ staticmethod # 这里不要写成静态方法
+    def load(self, data_path, session, ignore_missing=False):
+
+        # data_dict是一个字典， 键为“conv5_1”, "conv3_2"等等
+        # 而该字典的值又是字典，键为”biases"和"weights"
+        data_dict = np.load(data_path, encoding='latin1').item()
+        for key in data_dict.keys():
+
+            # key 是“conv5_1”, "conv3_2"等等
+            with tf.variable_scope(key, reuse=True):
+                for subkey in data_dict[key]:
+                    try:
+                        var = tf.get_variable(subkey)
+                        session.run(var.assign(data_dict[key][subkey]))
+                        print("assign pretrain model " + subkey + " to " + key)
+                    except ValueError:
+                        print("ignore " + key)
+                        if not ignore_missing:
+                            raise
