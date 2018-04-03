@@ -14,10 +14,10 @@ if __name__ == "__main__":
     cfg = load_config()
     pprint.pprint(cfg)
 
-    # 获取测试网络
+    # 获取测试网络， 一个空网络
     network = get_test_network(cfg)
 
-    # 获取测试类实例
+    # 获取测试类实例，这时候也还没有把参数填写进去
     testclass = TestClass(cfg, network)
     # 开始测试
     testclass.test_net()

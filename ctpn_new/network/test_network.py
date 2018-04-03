@@ -63,6 +63,10 @@ class test_network(base_network):
         'rpn_bbox_pred': 回归，即y和高度,形状是[1, H, W, 20],
         'im_info': 图片信息，一个三维向量，包含高，宽，缩放比例
         """
+        """
+        该函数执行以后，添加进self.layers的有：
+        'rpn_rois': (1 x H x W x A, 5) 第一列为正例的概率，后四列为映射回输入图片的，经过回归修正及nms以后的，预测的盒子坐标
+        """
         (self.feed('rpn_cls_prob_reshape', 'rpn_bbox_pred', 'im_info')
             .proposal_layer(_feat_stride, name='rois'))
 

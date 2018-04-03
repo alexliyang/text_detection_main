@@ -6,7 +6,7 @@ from exceptions import NoPositiveError
 
 
 class SolverWrapper(object):
-    def __init__(self, cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
+    def __init__(self, cfg, network, roidb, checkpoints_dir, max_iter, pretrain_model, restore):
         self._cfg = cfg
         self.net = network
         # 所有图片的imdb列表
@@ -120,6 +120,8 @@ class SolverWrapper(object):
                 _ = sess.run(fetches=train_list, feed_dict=feed_dict)
             except NoPositiveError:
                 print("warning: abandon a picture named {}".format(blobs['im_name']))
+            except :
+                print("=================================")
                 continue
 
             _diff_time = timer.toc(average=False)
@@ -140,15 +142,14 @@ class SolverWrapper(object):
         self.snapshot(sess, self.max_iter - 1)
 
 
-def train_net(cfg, network, roidb, checkpoints_dir, output_dir, log_dir, max_iter, pretrain_model, restore):
+def train_net(cfg, network, roidb, checkpoints_dir,  max_iter, pretrain_model, restore):
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allocator_type = 'BFC'
     config.gpu_options.per_process_gpu_memory_fraction = 0.9
 
     with tf.Session(config=config) as sess:
         '''sw = solver wrapper'''
-        sw = SolverWrapper(cfg, network, roidb, checkpoints_dir,
-                           output_dir, log_dir, max_iter, pretrain_model, restore)
+        sw = SolverWrapper(cfg, network, roidb, checkpoints_dir, max_iter, pretrain_model, restore)
         print('Solving...')
 
         sw.train_model(sess=sess)

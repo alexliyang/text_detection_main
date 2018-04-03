@@ -7,11 +7,11 @@ class TextProposalConnector:
     """
         Connect text proposals into text lines
     """
-    def __init__(self,cfg):
-        self.graph_builder=TextProposalGraphBuilder(cfg)
+    def __init__(self, cfg):
+        self.graph_builder = TextProposalGraphBuilder(cfg)
 
     def group_text_proposals(self, text_proposals, scores, im_size):
-        graph=self.graph_builder.build_graph(text_proposals, scores, im_size)
+        graph = self.graph_builder.build_graph(text_proposals, scores, im_size)
         return graph.sub_graphs_connected()
 
     def fit_y(self, X, Y, x1, x2):
@@ -24,11 +24,12 @@ class TextProposalConnector:
 
     def get_text_lines(self, text_proposals, scores, im_size):
         """
-        text_proposals:boxes
-        
+        text_proposals: 许多离散的，映射到了最原始图片的文本片段
+        scores：相应的得分
+        im_size：图片的高，宽
         """
-        # tp=text proposal
-        tp_groups=self.group_text_proposals(text_proposals, scores, im_size)#首先还是建图，获取到文本行由哪几个小框构成
+        # 首先还是建图，获取到文本行由哪几个小框构成
+        tp_groups = self.group_text_proposals(text_proposals, scores, im_size)
         
         text_lines=np.zeros((len(tp_groups), 8), np.float32)
 
