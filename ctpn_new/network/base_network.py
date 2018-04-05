@@ -34,7 +34,6 @@ class base_network(object):
     layers： 字典，用于存储每一层的数据
     _cfg： 配置文件
     """
-
     def __init__(self, cfg):
         self.inputs = []  # 用于存储临时数据
         self.layers = dict()  # 用于存储每一层的数据
@@ -69,7 +68,6 @@ class base_network(object):
                         print("ignore " + key)
                         if not ignore_missing:
                             raise
-
     @layer
     def conv(self, input, k_h, k_w, c_o, s_h, s_w, name, biased=True,
              relu=True, padding=DEFAULT_PADDING, trainable=True):
@@ -203,7 +201,6 @@ class base_network(object):
             rpn_bbox_targets = tf.convert_to_tensor(rpn_bbox_targets, name='rpn_bbox_targets')
             rpn_side_refinement = tf.convert_to_tensor(rpn_side_refinement, name='rpn_side_refinement')
 
-            # TODO 这里暂时只需要返回标签和anchor回归目标就可以了，后续会增加side refinement
             return rpn_labels, rpn_bbox_targets, rpn_side_refinement
 
     @layer
@@ -227,10 +224,6 @@ class base_network(object):
                                           [tf.float32])
 
             rpn_rois = tf.convert_to_tensor(tf.reshape(blob, [-1, 5]), name='rpn_rois')  # shape is (1 x H x W x A, 5)
-            # rpn_targets = tf.convert_to_tensor(bbox_delta, name='rpn_targets')  # shape is (1 x H x W x A, 2)
-            # self.layers['rpn_rois'] = rpn_rois
-            # self.layers['rpn_targets'] = rpn_targets
-
             return rpn_rois
 
     @layer
@@ -302,7 +295,7 @@ class base_network(object):
         # rpn_loss_box = tf.reduce_sum(rpn_loss_box_n) / (tf.shape(fg_keep)[0] + 1)
         rpn_cross_entropy = tf.reduce_mean(rpn_cross_entropy_n)
 
-        '''添加 side refinement loss'''
+        '''添加 side refinement loss========================================='''
         # 预测的side refinement x-side
         # side_refinement shape (H*W*10, 4)
         rpn_sr_targets = self.get_output('rpn-data')[2]
@@ -326,7 +319,6 @@ class base_network(object):
         # rpn_sr_loss = tf.reduce_sum(self.smooth_l1_dist((o_pred - o_target)), reduction_indices=[1])
 
         rpn_sr_loss = tf.reduce_sum(self.smooth_l1_dist((o_pred - o_target)))
-
 
         # 模型损失由三部分组成，分类交叉熵 + anchor高和位置的回归 + side refinement 回归
         model_loss = rpn_cross_entropy + rpn_loss_box + rpn_sr_loss

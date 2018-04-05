@@ -1,13 +1,6 @@
 import numpy as np
-a = np.array(range(24))
-a = a.reshape((2,3,4))
-
-b = a[:, 1, :]
-c = list(b)
-print("b", b)
-print("c", c)
-c += c
-print([list(list(c))])
-# print(list(c[0])
-
-
+import os
+a = np.array([0,1,2,3,4,5])
+delete_index = []
+b = [a[i] for i in range(len(a)) if i not in delete_index]
+print(b)

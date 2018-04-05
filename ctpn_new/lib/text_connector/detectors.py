@@ -47,5 +47,5 @@ class TextDetector:
             scores[index] = box[8]
             index += 1
 
-        return np.where((widths/heights > self._cfg.MIN_RATIO) & (scores > self._cfg.LINE_MIN_SCORE) &
-                        (widths > (self._cfg.TEXT_PROPOSALS_WIDTH*self._cfg.MIN_NUM_PROPOSALS)))[0]
+        return np.where((widths/heights > self._cfg.TEST.MIN_RATIO) & (scores > self._cfg.TEST.LINE_MIN_SCORE) &
+                        (widths > (self._cfg.TEST.TEXT_PROPOSALS_WIDTH*self._cfg.TEST.MIN_NUM_PROPOSALS)))[0]
